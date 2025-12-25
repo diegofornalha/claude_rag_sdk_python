@@ -4,6 +4,7 @@
 # Configuração de CORS restritivo e headers de segurança para produção
 # =============================================================================
 
+import os
 import re
 from dataclasses import dataclass, field
 from typing import Optional
@@ -157,8 +158,6 @@ CORS_PRODUCTION = CORSConfig(
 )
 
 # Configuração ativa baseada em ambiente
-import os
-
 _env = os.getenv("ENVIRONMENT", "development")
 SECURITY_CONFIG = CORS_DEVELOPMENT if _env == "development" else CORS_PRODUCTION
 

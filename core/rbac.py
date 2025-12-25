@@ -5,6 +5,7 @@
 # =============================================================================
 
 import json
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
@@ -194,8 +195,6 @@ class RBACFilter:
 
 
 # Context var para usuário atual (similar ao logger)
-from contextvars import ContextVar
-
 current_user_var: ContextVar[Optional[User]] = ContextVar("current_user", default=None)
 
 

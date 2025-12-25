@@ -5,11 +5,15 @@
 # =============================================================================
 
 import hashlib
+import os
 import secrets
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import Optional
+
+from fastapi import Header
 
 
 class AuthScope(str, Enum):
@@ -252,9 +256,6 @@ def authenticate(auth_header: Optional[str]) -> AuthResult:
 # FUNÇÕES PARA FASTAPI - Dependency Injection
 # =============================================================================
 
-import os
-from pathlib import Path
-
 # Carregar variaveis de ambiente do .env
 try:
     from dotenv import load_dotenv, set_key
@@ -301,9 +302,6 @@ else:
 def is_auth_enabled() -> bool:
     """Verifica se autenticação está habilitada."""
     return _AUTH_ENABLED
-
-
-from fastapi import Header
 
 
 async def verify_api_key(

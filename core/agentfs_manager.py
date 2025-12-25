@@ -14,9 +14,9 @@ from typing import Optional
 agentfs_sdk_path = Path(__file__).parent.parent / "agentfs" / "sdk" / "python"
 sys.path.insert(0, str(agentfs_sdk_path))
 
-from agentfs_sdk import AgentFS, AgentFSOptions
+from agentfs_sdk import AgentFS, AgentFSOptions  # noqa: E402
 
-from .logger import logger
+from .logger import logger  # noqa: E402
 
 # Instância global
 _agentfs: Optional[AgentFS] = None
