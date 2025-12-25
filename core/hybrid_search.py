@@ -197,25 +197,26 @@ class HybridSearch:
         query_vec = sqlite_vec.serialize_float32(embeddings[0].tolist())
 
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        vector_results = {}
-        for row in cursor.execute("""
-            SELECT v.doc_id, v.distance, d.nome, d.conteudo, d.tipo
-            FROM vec_documentos v
-            JOIN documentos d ON d.id = v.doc_id
-            WHERE v.embedding MATCH ? AND k = ?
-        """, (query_vec, vector_top_k)):
-            doc_id, distance, nome, conteudo, tipo = row
-            similarity = max(0, 1 - distance)
-            vector_results[doc_id] = {
-                "vector_score": similarity,
-                "nome": nome,
-                "conteudo": conteudo,
-                "tipo": tipo,
-            }
-
-        conn.close()
+            vector_results = {}
+            for row in cursor.execute("""
+                SELECT v.doc_id, v.distance, d.nome, d.conteudo, d.tipo
+                FROM vec_documentos v
+                JOIN documentos d ON d.id = v.doc_id
+                WHERE v.embedding MATCH ? AND k = ?
+            """, (query_vec, vector_top_k)):
+                doc_id, distance, nome, conteudo, tipo = row
+                similarity = max(0, 1 - distance)
+                vector_results[doc_id] = {
+                    "vector_score": similarity,
+                    "nome": nome,
+                    "conteudo": conteudo,
+                    "tipo": tipo,
+                }
+        finally:
+            conn.close()
 
         # 2. Busca BM25 nos mesmos documentos + extras
         bm25_scores = self.bm25.search(query)
