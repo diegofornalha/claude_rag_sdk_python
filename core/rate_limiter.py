@@ -244,7 +244,8 @@ try:
     def get_limiter():
         return _slowapi_limiter
 except ImportError:
-    pass
+    SLOWAPI_AVAILABLE = False
+    print("[WARN] slowapi not available - rate limiting disabled")
 
 
 # Rate limits padrão para endpoints

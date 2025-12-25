@@ -272,8 +272,8 @@ Sempre use search_documents antes de responder qualquer pergunta."""
                 citation = json.loads(match)
                 if "source" in citation and "quote" in citation:
                     citations.append(citation)
-            except json.JSONDecodeError:
-                pass
+            except json.JSONDecodeError as e:
+                print(f"[WARN] Failed to parse citation JSON: {e}")
 
         # Try to find confidence
         conf_pattern = r'"confidence"\s*:\s*(0\.\d+|1\.0|1)'
@@ -281,8 +281,8 @@ Sempre use search_documents antes de responder qualquer pergunta."""
         if conf_match:
             try:
                 confidence = float(conf_match.group(1))
-            except ValueError:
-                pass
+            except ValueError as e:
+                print(f"[WARN] Failed to parse confidence value: {e}")
 
         # Estimate confidence based on citations
         if not confidence or confidence == 0.5:

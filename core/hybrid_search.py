@@ -165,13 +165,14 @@ class HybridSearch:
     def _index_bm25(self) -> None:
         """Indexa documentos para BM25."""
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        documents = []
-        for row in cursor.execute("SELECT id, conteudo FROM documentos WHERE conteudo IS NOT NULL"):
-            documents.append((row[0], row[1]))
-
-        conn.close()
+            documents = []
+            for row in cursor.execute("SELECT id, conteudo FROM documentos WHERE conteudo IS NOT NULL"):
+                documents.append((row[0], row[1]))
+        finally:
+            conn.close()
         self.bm25.index(documents)
 
     def search(
@@ -226,6 +227,22 @@ class HybridSearch:
         max_bm25 = max(bm25_scores.values()) if bm25_scores else 1
         normalized_bm25 = {k: v / max_bm25 for k, v in bm25_scores.items()}
 
+        # Buscar dados de documentos faltantes em uma única query
+        missing_doc_ids = [doc_id for doc_id in all_doc_ids if doc_id not in vector_results]
+        missing_docs = {}
+        if missing_doc_ids:
+            conn_missing = self._get_connection()
+            try:
+                cursor_missing = conn_missing.cursor()
+                placeholders = ','.join('?' * len(missing_doc_ids))
+                for row in cursor_missing.execute(
+                    f"SELECT id, nome, conteudo, tipo FROM documentos WHERE id IN ({placeholders})",
+                    missing_doc_ids
+                ):
+                    missing_docs[row[0]] = {"nome": row[1], "conteudo": row[2], "tipo": row[3]}
+            finally:
+                conn_missing.close()
+
         results = []
         for doc_id in all_doc_ids:
             vector_score = vector_results.get(doc_id, {}).get("vector_score", 0)
@@ -237,24 +254,13 @@ class HybridSearch:
                 self.bm25_weight * bm25_score
             )
 
-            # Buscar dados do documento se não tiver
+            # Obter dados do documento
             if doc_id in vector_results:
                 doc_data = vector_results[doc_id]
+            elif doc_id in missing_docs:
+                doc_data = missing_docs[doc_id]
             else:
-                conn = self._get_connection()
-                cursor = conn.cursor()
-                row = None
-                for r in cursor.execute(
-                    "SELECT nome, conteudo, tipo FROM documentos WHERE id = ?",
-                    (doc_id,)
-                ):
-                    row = r
-                    break
-                conn.close()
-                if row:
-                    doc_data = {"nome": row[0], "conteudo": row[1], "tipo": row[2]}
-                else:
-                    continue
+                continue
 
             results.append(SearchResult(
                 doc_id=doc_id,

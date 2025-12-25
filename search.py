@@ -189,27 +189,28 @@ class SearchEngine:
 
         # Query database
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        results = []
-        for row in cursor.execute("""
-            SELECT v.doc_id, v.distance, d.nome, d.conteudo, d.tipo
-            FROM vec_documentos v
-            JOIN documentos d ON d.id = v.doc_id
-            WHERE v.embedding MATCH ? AND k = ?
-        """, (query_vec, fetch_k)):
-            doc_id, distance, nome, conteudo, tipo = row
-            similarity = max(0, 1 - distance)
+            results = []
+            for row in cursor.execute("""
+                SELECT v.doc_id, v.distance, d.nome, d.conteudo, d.tipo
+                FROM vec_documentos v
+                JOIN documentos d ON d.id = v.doc_id
+                WHERE v.embedding MATCH ? AND k = ?
+            """, (query_vec, fetch_k)):
+                doc_id, distance, nome, conteudo, tipo = row
+                similarity = max(0, 1 - distance)
 
-            results.append(SearchResult(
-                doc_id=doc_id,
-                source=nome,
-                content=conteudo[:content_max_length] if conteudo else "",
-                similarity=round(similarity, 4),
-                doc_type=tipo,
-            ))
-
-        conn.close()
+                results.append(SearchResult(
+                    doc_id=doc_id,
+                    source=nome,
+                    content=conteudo[:content_max_length] if conteudo else "",
+                    similarity=round(similarity, 4),
+                    doc_type=tipo,
+                ))
+        finally:
+            conn.close()
 
         # Apply adaptive top-k
         if adaptive and results:
@@ -304,18 +305,19 @@ class SearchEngine:
             Document dict or None if not found
         """
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        row = None
-        for r in cursor.execute("""
-            SELECT id, nome, tipo, conteudo, caminho, criado_em
-            FROM documentos
-            WHERE id = ?
-        """, (doc_id,)):
-            row = r
-            break
-
-        conn.close()
+            row = None
+            for r in cursor.execute("""
+                SELECT id, nome, tipo, conteudo, caminho, criado_em
+                FROM documentos
+                WHERE id = ?
+            """, (doc_id,)):
+                row = r
+                break
+        finally:
+            conn.close()
 
         if not row:
             return None
@@ -336,18 +338,19 @@ class SearchEngine:
             List of source info dicts
         """
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        results = [
-            {"id": r[0], "nome": r[1], "tipo": r[2], "tamanho": r[3]}
-            for r in cursor.execute("""
-                SELECT id, nome, tipo, LENGTH(conteudo) as tamanho
-                FROM documentos
-                ORDER BY nome
-            """)
-        ]
-
-        conn.close()
+            results = [
+                {"id": r[0], "nome": r[1], "tipo": r[2], "tamanho": r[3]}
+                for r in cursor.execute("""
+                    SELECT id, nome, tipo, LENGTH(conteudo) as tamanho
+                    FROM documentos
+                    ORDER BY nome
+                """)
+            ]
+        finally:
+            conn.close()
         return results
 
     async def count_documents(self) -> dict:
@@ -357,17 +360,18 @@ class SearchEngine:
             Stats dict with counts
         """
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        total_docs = 0
-        for r in cursor.execute("SELECT COUNT(*) FROM documentos"):
-            total_docs = r[0]
+            total_docs = 0
+            for r in cursor.execute("SELECT COUNT(*) FROM documentos"):
+                total_docs = r[0]
 
-        total_embeddings = 0
-        for r in cursor.execute("SELECT COUNT(*) FROM vec_documentos"):
-            total_embeddings = r[0]
-
-        conn.close()
+            total_embeddings = 0
+            for r in cursor.execute("SELECT COUNT(*) FROM vec_documentos"):
+                total_embeddings = r[0]
+        finally:
+            conn.close()
 
         return {
             "total_documentos": total_docs,

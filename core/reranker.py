@@ -46,7 +46,9 @@ class CrossEncoderReranker:
         except ImportError:
             # Fallback: usar scoring simples se não tiver sentence-transformers
             self._model = None
-        except Exception:
+        except (OSError, RuntimeError, ValueError) as e:
+            # Model loading failed - use fallback scoring
+            print(f"[WARN] CrossEncoder load failed: {e}")
             self._model = None
 
         return self._model

@@ -118,39 +118,40 @@ class IngestEngine:
     def _ensure_database(self):
         """Ensure database schema exists."""
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        # Create documents table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS documentos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                tipo TEXT,
-                conteudo TEXT,
-                caminho TEXT,
-                hash TEXT UNIQUE,
-                metadata TEXT,
-                criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+            # Create documents table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS documentos (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    nome TEXT NOT NULL,
+                    tipo TEXT,
+                    conteudo TEXT,
+                    caminho TEXT,
+                    hash TEXT UNIQUE,
+                    metadata TEXT,
+                    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
 
-        # Get embedding dimensions from model
-        # BGE models: small=384, base=768, large=1024
-        dims = 384  # default for bge-small
-        if "base" in self.embedding_model_name:
-            dims = 768
-        elif "large" in self.embedding_model_name:
-            dims = 1024
+            # Get embedding dimensions from model
+            # BGE models: small=384, base=768, large=1024
+            dims = 384  # default for bge-small
+            if "base" in self.embedding_model_name:
+                dims = 768
+            elif "large" in self.embedding_model_name:
+                dims = 1024
 
-        # Create vector table
-        cursor.execute(f"""
-            CREATE VIRTUAL TABLE IF NOT EXISTS vec_documentos USING vec0(
-                doc_id INTEGER PRIMARY KEY,
-                embedding FLOAT[{dims}]
-            )
-        """)
-
-        conn.close()
+            # Create vector table
+            cursor.execute(f"""
+                CREATE VIRTUAL TABLE IF NOT EXISTS vec_documentos USING vec0(
+                    doc_id INTEGER PRIMARY KEY,
+                    embedding FLOAT[{dims}]
+                )
+            """)
+        finally:
+            conn.close()
 
     def _compute_hash(self, content: str) -> str:
         """Compute content hash for deduplication."""
@@ -349,9 +350,9 @@ class IngestEngine:
             )
 
         conn = self._get_connection()
-        cursor = conn.cursor()
-
         try:
+            cursor = conn.cursor()
+
             # Check for duplicates
             content_hash = self._compute_hash(content)
             existing = None
@@ -397,8 +398,6 @@ class IngestEngine:
                     VALUES (?, ?)
                 """, (doc_id, embedding_bytes))
 
-            conn.close()
-
             return IngestResult(
                 success=True,
                 doc_id=doc_id,
@@ -407,12 +406,13 @@ class IngestEngine:
             )
 
         except Exception as e:
-            conn.close()
             return IngestResult(
                 success=False,
                 source=source,
                 error=str(e),
             )
+        finally:
+            conn.close()
 
     async def add_documents(
         self,
@@ -444,15 +444,16 @@ class IngestEngine:
             True if deleted, False if not found
         """
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM vec_documentos WHERE doc_id = ?", (doc_id,))
-        cursor.execute("DELETE FROM documentos WHERE id = ?", (doc_id,))
+            cursor.execute("DELETE FROM vec_documentos WHERE doc_id = ?", (doc_id,))
+            cursor.execute("DELETE FROM documentos WHERE id = ?", (doc_id,))
 
-        deleted = conn.changes() > 0
-        conn.close()
-
-        return deleted
+            deleted = conn.changes() > 0
+            return deleted
+        finally:
+            conn.close()
 
     async def clear_all(self) -> int:
         """Delete all documents.
@@ -461,17 +462,18 @@ class IngestEngine:
             Number of documents deleted
         """
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        cursor.execute("SELECT COUNT(*) FROM documentos")
-        count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM documentos")
+            count = cursor.fetchone()[0]
 
-        cursor.execute("DELETE FROM vec_documentos")
-        cursor.execute("DELETE FROM documentos")
+            cursor.execute("DELETE FROM vec_documentos")
+            cursor.execute("DELETE FROM documentos")
 
-        conn.close()
-
-        return count
+            return count
+        finally:
+            conn.close()
 
     async def reindex(self) -> int:
         """Reindex all documents (regenerate embeddings).
@@ -480,61 +482,63 @@ class IngestEngine:
             Number of documents reindexed
         """
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        # Get all documents
-        documents = []
-        for row in cursor.execute("SELECT id, conteudo FROM documentos"):
-            documents.append((row[0], row[1]))
+            # Get all documents
+            documents = []
+            for row in cursor.execute("SELECT id, conteudo FROM documentos"):
+                documents.append((row[0], row[1]))
 
-        # Clear embeddings
-        cursor.execute("DELETE FROM vec_documentos")
+            # Clear embeddings
+            cursor.execute("DELETE FROM vec_documentos")
 
-        # Regenerate
-        count = 0
-        for doc_id, content in documents:
-            if content:
-                chunks = self._chunk_text(content)
-                embeddings = list(self.model.embed(chunks))
+            # Regenerate
+            count = 0
+            for doc_id, content in documents:
+                if content:
+                    chunks = self._chunk_text(content)
+                    embeddings = list(self.model.embed(chunks))
 
-                if embeddings:
-                    doc_embedding = embeddings[0].tolist()
-                    embedding_bytes = sqlite_vec.serialize_float32(doc_embedding)
+                    if embeddings:
+                        doc_embedding = embeddings[0].tolist()
+                        embedding_bytes = sqlite_vec.serialize_float32(doc_embedding)
 
-                    cursor.execute("""
-                        INSERT INTO vec_documentos (doc_id, embedding)
-                        VALUES (?, ?)
-                    """, (doc_id, embedding_bytes))
+                        cursor.execute("""
+                            INSERT INTO vec_documentos (doc_id, embedding)
+                            VALUES (?, ?)
+                        """, (doc_id, embedding_bytes))
 
-                    count += 1
+                        count += 1
 
-        conn.close()
-
-        return count
+            return count
+        finally:
+            conn.close()
 
     @property
     def stats(self) -> dict:
         """Get ingestion statistics."""
         conn = self._get_connection()
-        cursor = conn.cursor()
+        try:
+            cursor = conn.cursor()
 
-        total_docs = 0
-        for r in cursor.execute("SELECT COUNT(*) FROM documentos"):
-            total_docs = r[0]
+            total_docs = 0
+            for r in cursor.execute("SELECT COUNT(*) FROM documentos"):
+                total_docs = r[0]
 
-        total_embeddings = 0
-        for r in cursor.execute("SELECT COUNT(*) FROM vec_documentos"):
-            total_embeddings = r[0]
+            total_embeddings = 0
+            for r in cursor.execute("SELECT COUNT(*) FROM vec_documentos"):
+                total_embeddings = r[0]
 
-        total_size = 0
-        for r in cursor.execute("SELECT SUM(LENGTH(conteudo)) FROM documentos"):
-            total_size = r[0] or 0
+            total_size = 0
+            for r in cursor.execute("SELECT SUM(LENGTH(conteudo)) FROM documentos"):
+                total_size = r[0] or 0
 
-        conn.close()
-
-        return {
-            "total_documents": total_docs,
-            "total_embeddings": total_embeddings,
-            "total_size_bytes": total_size,
-            "status": "ok" if total_docs == total_embeddings else "incompleto",
-        }
+            return {
+                "total_documents": total_docs,
+                "total_embeddings": total_embeddings,
+                "total_size_bytes": total_size,
+                "status": "ok" if total_docs == total_embeddings else "incompleto",
+            }
+        finally:
+            conn.close()

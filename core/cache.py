@@ -78,8 +78,8 @@ class LRUCache(Generic[T]):
         """Estima tamanho em bytes de um valor."""
         try:
             return len(json.dumps(value, default=str).encode('utf-8'))
-        except:
-            return 0
+        except (TypeError, ValueError, UnicodeEncodeError):
+            return 0  # Cannot serialize, estimate as zero
 
     def get(self, key: str) -> Optional[T]:
         """

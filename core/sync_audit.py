@@ -65,8 +65,8 @@ class SyncAuditQueue:
             if session_file.exists():
                 try:
                     session_id = session_file.read_text().strip()
-                except Exception:
-                    pass
+                except (OSError, IOError):
+                    pass  # File read failed, continue without session_id
 
         if session_id:
             self.set_session(session_id)
@@ -243,7 +243,7 @@ def audit_sync_tool(tool_name: str):
                     return result
                 else:
                     return str(result)[:500]
-            except:
+            except (TypeError, ValueError, AttributeError):
                 return "[not serializable]"
 
         def _get_parameters(*args, **kwargs):
