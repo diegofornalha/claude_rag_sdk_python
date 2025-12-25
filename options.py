@@ -23,10 +23,19 @@ class ChunkingStrategy(Enum):
 
 
 class AgentModel(Enum):
-    """Claude models for agent queries."""
-    HAIKU = "haiku"
-    SONNET = "sonnet"
-    OPUS = "opus"
+    """Claude models for agent queries (versões estáveis 4.5)."""
+    HAIKU = "haiku"  # Claude Haiku 4.5 (default, rápido)
+    SONNET = "sonnet"  # Claude Sonnet 4.5 (balanceado)
+    OPUS = "opus"  # Claude Opus 4.5 (mais capaz)
+
+    def get_model_id(self) -> str:
+        """Get full model ID for API calls."""
+        MODEL_IDS = {
+            "haiku": "claude-haiku-4-5-20251001",
+            "sonnet": "claude-sonnet-4-5-20250929",
+            "opus": "claude-opus-4-5-20251101",
+        }
+        return MODEL_IDS.get(self.value, f"claude-{self.value}-latest")
 
 
 @dataclass

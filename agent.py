@@ -136,7 +136,7 @@ Sempre use search_documents antes de responder qualquer pergunta."""
         outputs_dir.mkdir(parents=True, exist_ok=True)
 
         self._agent_options = ClaudeAgentOptions(
-            model=self.options.agent_model.value,
+            model=self.options.agent_model.get_model_id(),
             system_prompt=self.system_prompt,
             cwd=str(outputs_dir),  # Files will be created in outputs/
             allowed_tools=[
@@ -383,7 +383,7 @@ Responda baseado APENAS nos documentos acima. Inclua citações."""
         # Call Claude API
         client = anthropic.Anthropic()
         message = client.messages.create(
-            model=f"claude-3-5-{self.model.value}-latest",
+            model=self.model.get_model_id(),
             max_tokens=2048,
             system=self.system_prompt,
             messages=[{"role": "user", "content": user_message}],
