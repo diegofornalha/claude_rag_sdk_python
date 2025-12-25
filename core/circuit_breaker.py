@@ -4,27 +4,29 @@
 # Implementa padrão Circuit Breaker para proteger contra falhas em cascata
 # =============================================================================
 
-import time
 import threading
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Callable, Optional, TypeVar, Generic
 from functools import wraps
+from typing import Callable, Optional, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CircuitState(str, Enum):
     """Estados do circuit breaker."""
-    CLOSED = "closed"       # Normal, permitindo chamadas
-    OPEN = "open"           # Bloqueando chamadas
+
+    CLOSED = "closed"  # Normal, permitindo chamadas
+    OPEN = "open"  # Bloqueando chamadas
     HALF_OPEN = "half_open"  # Testando se pode reabrir
 
 
 @dataclass
 class CircuitStats:
     """Estatísticas do circuit breaker."""
+
     total_calls: int = 0
     successful_calls: int = 0
     failed_calls: int = 0
@@ -37,6 +39,7 @@ class CircuitStats:
 
 class CircuitBreakerError(Exception):
     """Erro quando circuit está aberto."""
+
     pass
 
 
@@ -53,10 +56,10 @@ class CircuitBreaker:
     def __init__(
         self,
         name: str,
-        failure_threshold: int = 5,      # Falhas para abrir circuito
-        success_threshold: int = 3,      # Sucessos para fechar em half-open
-        timeout: float = 30.0,           # Segundos antes de tentar half-open
-        half_open_max_calls: int = 3,    # Chamadas permitidas em half-open
+        failure_threshold: int = 5,  # Falhas para abrir circuito
+        success_threshold: int = 3,  # Sucessos para fechar em half-open
+        timeout: float = 30.0,  # Segundos antes de tentar half-open
+        half_open_max_calls: int = 3,  # Chamadas permitidas em half-open
     ):
         self.name = name
         self.failure_threshold = failure_threshold
@@ -102,7 +105,6 @@ class CircuitBreaker:
 
     def _transition_to(self, new_state: CircuitState) -> None:
         """Transiciona para novo estado."""
-        old_state = self._state
         self._state = new_state
 
         if new_state == CircuitState.OPEN:
@@ -203,7 +205,7 @@ class CircuitBreaker:
             result = func()
             self._record_success()
             return result
-        except Exception as e:
+        except Exception:
             self._record_failure()
             if fallback:
                 return fallback()
@@ -236,10 +238,7 @@ def circuit_breaker(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
-            return cb.call(
-                lambda: func(*args, **kwargs),
-                fallback=fallback
-            )
+            return cb.call(lambda: func(*args, **kwargs), fallback=fallback)
 
         wrapper.circuit_breaker = cb
         return wrapper
@@ -306,13 +305,13 @@ if __name__ == "__main__":
     for i in range(15):
         try:
             result = cb.call(unstable_service, fallback=fallback_response)
-            print(f"  Call {i+1}: {result} | State: {cb.state.value}")
-        except CircuitBreakerError as e:
-            print(f"  Call {i+1}: BLOCKED | State: {cb.state.value}")
+            print(f"  Call {i + 1}: {result} | State: {cb.state.value}")
+        except CircuitBreakerError:
+            print(f"  Call {i + 1}: BLOCKED | State: {cb.state.value}")
 
         time.sleep(0.5)
 
-    print(f"\n--- Estatísticas ---")
+    print("\n--- Estatísticas ---")
     stats = cb.stats
     print(f"  Total: {stats.total_calls}")
     print(f"  Sucesso: {stats.successful_calls}")
@@ -331,7 +330,7 @@ if __name__ == "__main__":
     for i in range(10):
         try:
             result = decorated_function()
-            print(f"  Call {i+1}: {result}")
+            print(f"  Call {i + 1}: {result}")
         except Exception as e:
-            print(f"  Call {i+1}: {type(e).__name__}")
+            print(f"  Call {i + 1}: {type(e).__name__}")
         time.sleep(0.3)

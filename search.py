@@ -1,9 +1,8 @@
 """Search engine for ClaudeRAG SDK - Semantic and Hybrid search."""
 
-import time
 from dataclasses import dataclass
-from typing import Any, Optional
 from pathlib import Path
+from typing import Optional
 
 import apsw
 import sqlite_vec
@@ -24,6 +23,7 @@ class SearchResult:
         rank: Final rank position
         metadata: Additional metadata
     """
+
     doc_id: int
     source: str
     content: str
@@ -50,6 +50,7 @@ class SearchResult:
 @dataclass
 class HybridSearchResult(SearchResult):
     """Search result with hybrid scores."""
+
     vector_score: float = 0.0
     bm25_score: float = 0.0
     hybrid_score: float = 0.0
@@ -139,6 +140,7 @@ class SearchEngine:
         if self._prompt_guard is None:
             try:
                 from .core.prompt_guard import PromptGuard
+
                 self._prompt_guard = PromptGuard(strict_mode=False)
             except ImportError:
                 return True, None
@@ -193,22 +195,27 @@ class SearchEngine:
             cursor = conn.cursor()
 
             results = []
-            for row in cursor.execute("""
+            for row in cursor.execute(
+                """
                 SELECT v.doc_id, v.distance, d.nome, d.conteudo, d.tipo
                 FROM vec_documentos v
                 JOIN documentos d ON d.id = v.doc_id
                 WHERE v.embedding MATCH ? AND k = ?
-            """, (query_vec, fetch_k)):
+            """,
+                (query_vec, fetch_k),
+            ):
                 doc_id, distance, nome, conteudo, tipo = row
                 similarity = max(0, 1 - distance)
 
-                results.append(SearchResult(
-                    doc_id=doc_id,
-                    source=nome,
-                    content=conteudo[:content_max_length] if conteudo else "",
-                    similarity=round(similarity, 4),
-                    doc_type=tipo,
-                ))
+                results.append(
+                    SearchResult(
+                        doc_id=doc_id,
+                        source=nome,
+                        content=conteudo[:content_max_length] if conteudo else "",
+                        similarity=round(similarity, 4),
+                        doc_type=tipo,
+                    )
+                )
         finally:
             conn.close()
 
@@ -281,17 +288,19 @@ class SearchEngine:
 
         results = []
         for i, r in enumerate(raw_results):
-            results.append(HybridSearchResult(
-                doc_id=r.doc_id,
-                source=r.nome,
-                content=r.content[:content_max_length] if r.content else "",
-                similarity=r.vector_score,
-                doc_type=r.tipo,
-                vector_score=r.vector_score,
-                bm25_score=r.bm25_score,
-                hybrid_score=r.hybrid_score,
-                rank=i + 1,
-            ))
+            results.append(
+                HybridSearchResult(
+                    doc_id=r.doc_id,
+                    source=r.nome,
+                    content=r.content[:content_max_length] if r.content else "",
+                    similarity=r.vector_score,
+                    doc_type=r.tipo,
+                    vector_score=r.vector_score,
+                    bm25_score=r.bm25_score,
+                    hybrid_score=r.hybrid_score,
+                    rank=i + 1,
+                )
+            )
 
         return results
 
@@ -309,11 +318,14 @@ class SearchEngine:
             cursor = conn.cursor()
 
             row = None
-            for r in cursor.execute("""
+            for r in cursor.execute(
+                """
                 SELECT id, nome, tipo, conteudo, caminho, criado_em
                 FROM documentos
                 WHERE id = ?
-            """, (doc_id,)):
+            """,
+                (doc_id,),
+            ):
                 row = r
                 break
         finally:
@@ -343,11 +355,13 @@ class SearchEngine:
 
             results = [
                 {"id": r[0], "nome": r[1], "tipo": r[2], "tamanho": r[3]}
-                for r in cursor.execute("""
+                for r in cursor.execute(
+                    """
                     SELECT id, nome, tipo, LENGTH(conteudo) as tamanho
                     FROM documentos
                     ORDER BY nome
-                """)
+                """
+                )
             ]
         finally:
             conn.close()
@@ -416,13 +430,19 @@ class SearchEngine:
         if self._reranker is None:
             try:
                 from .core.reranker import LightweightReranker
+
                 self._reranker = LightweightReranker()
             except ImportError:
                 # No reranking available
                 return results[:top_k]
 
         docs_for_rerank = [
-            (r.doc_id, r.content, r.similarity, {"source": r.source, "type": r.doc_type})
+            (
+                r.doc_id,
+                r.content,
+                r.similarity,
+                {"source": r.source, "type": r.doc_type},
+            )
             for r in results
         ]
 

@@ -7,15 +7,16 @@ Gerencia lifecycle do AgentFS, garantindo uma instância por sessão
 """
 
 import sys
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 # Adicionar caminho do SDK do AgentFS
 agentfs_sdk_path = Path(__file__).parent.parent / "agentfs" / "sdk" / "python"
 sys.path.insert(0, str(agentfs_sdk_path))
 
 from agentfs_sdk import AgentFS, AgentFSOptions
-from .logger import logger, get_session_id
+
+from .logger import logger
 
 # Instância global
 _agentfs: Optional[AgentFS] = None
@@ -44,7 +45,11 @@ async def init_agentfs(session_id: str) -> AgentFS:
 
     # Se existe mas é sessão diferente, fecha anterior
     if _agentfs:
-        logger.info("Fechando AgentFS da sessão anterior", old_session=_current_session_id, new_session=session_id)
+        logger.info(
+            "Fechando AgentFS da sessão anterior",
+            old_session=_current_session_id,
+            new_session=session_id,
+        )
         await close_agentfs()
 
     # Cria diretório .agentfs se não existe
@@ -55,17 +60,14 @@ async def init_agentfs(session_id: str) -> AgentFS:
     db_path = agentfs_dir / f"{session_id}.db"
 
     try:
-        _agentfs = await AgentFS.open(AgentFSOptions(
-            id=session_id,
-            path=str(db_path)
-        ))
+        _agentfs = await AgentFS.open(AgentFSOptions(id=session_id, path=str(db_path)))
         _current_session_id = session_id
 
         logger.info(
             "AgentFS inicializado com sucesso",
             session_id=session_id,
             db_path=str(db_path),
-            exists=db_path.exists()
+            exists=db_path.exists(),
         )
 
         return _agentfs
@@ -86,10 +88,7 @@ def get_agentfs() -> AgentFS:
         RuntimeError: Se AgentFS não foi inicializado
     """
     if _agentfs is None:
-        raise RuntimeError(
-            "AgentFS não inicializado. "
-            "Chame init_agentfs(session_id) primeiro."
-        )
+        raise RuntimeError("AgentFS não inicializado. Chame init_agentfs(session_id) primeiro.")
     return _agentfs
 
 
@@ -149,7 +148,10 @@ async def ensure_agentfs() -> AgentFS:
     if session_file.exists():
         session_id = session_file.read_text().strip()
         if session_id:
-            logger.info("Inicializando AgentFS a partir do arquivo de sessão", session_id=session_id)
+            logger.info(
+                "Inicializando AgentFS a partir do arquivo de sessão",
+                session_id=session_id,
+            )
             return await init_agentfs(session_id)
 
     raise RuntimeError(

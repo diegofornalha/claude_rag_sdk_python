@@ -13,6 +13,7 @@ from typing import Optional
 
 class BlockReason(str, Enum):
     """Razao do bloqueio de tool."""
+
     NOT_IN_WHITELIST = "not_in_whitelist"
     BLOCKED_KEYWORD = "blocked_keyword"
     SUSPICIOUS_INPUT = "suspicious_input"
@@ -22,6 +23,7 @@ class BlockReason(str, Enum):
 @dataclass
 class ValidationResult:
     """Resultado da validacao de tool."""
+
     is_valid: bool
     tool_name: str
     block_reason: Optional[BlockReason] = None
@@ -63,51 +65,109 @@ class ToolValidator:
     # Keywords bloqueadas em nomes de tools
     BLOCKED_TOOL_KEYWORDS: set[str] = {
         # Shell/Command execution
-        "bash", "shell", "sh", "cmd", "powershell", "terminal",
-        "exec", "execute", "run", "spawn", "subprocess",
-
+        "bash",
+        "shell",
+        "sh",
+        "cmd",
+        "powershell",
+        "terminal",
+        "exec",
+        "execute",
+        "run",
+        "spawn",
+        "subprocess",
         # Filesystem
-        "file", "read", "write", "delete", "create", "mkdir",
-        "copy", "move", "rename", "glob", "find", "ls", "cat",
-
+        "file",
+        "read",
+        "write",
+        "delete",
+        "create",
+        "mkdir",
+        "copy",
+        "move",
+        "rename",
+        "glob",
+        "find",
+        "ls",
+        "cat",
         # Web/Network
-        "http", "https", "curl", "wget", "fetch", "request",
-        "download", "upload", "url", "web", "api",
-
+        "http",
+        "https",
+        "curl",
+        "wget",
+        "fetch",
+        "request",
+        "download",
+        "upload",
+        "url",
+        "web",
+        "api",
         # System
-        "os", "system", "process", "env", "path",
-        "install", "pip", "npm", "apt", "brew",
-
+        "os",
+        "system",
+        "process",
+        "env",
+        "path",
+        "install",
+        "pip",
+        "npm",
+        "apt",
+        "brew",
         # Database (externa)
-        "sql", "database", "db", "query", "insert", "update",
-
+        "sql",
+        "database",
+        "db",
+        "query",
+        "insert",
+        "update",
         # Code execution
-        "eval", "compile", "import", "require", "load",
+        "eval",
+        "compile",
+        "import",
+        "require",
+        "load",
     }
 
     # Keywords bloqueadas em inputs
     BLOCKED_INPUT_KEYWORDS: set[str] = {
         # Commands
-        "rm ", "rm -", "sudo", "chmod", "chown",
-        "/bin/", "/usr/", "/etc/", "/var/",
-
+        "rm ",
+        "rm -",
+        "sudo",
+        "chmod",
+        "chown",
+        "/bin/",
+        "/usr/",
+        "/etc/",
+        "/var/",
         # Paths perigosos
-        "../", "..\\", "~/.ssh", "~/.aws", "~/.config",
-        "/etc/passwd", "/etc/shadow",
-
+        "../",
+        "..\\",
+        "~/.ssh",
+        "~/.aws",
+        "~/.config",
+        "/etc/passwd",
+        "/etc/shadow",
         # Injection patterns
-        "; ", " && ", " || ", "`", "$(",
-        "$(", "${", "{{", "}}",
+        "; ",
+        " && ",
+        " || ",
+        "`",
+        "$(",
+        "$(",
+        "${",
+        "{{",
+        "}}",
     }
 
     # Patterns regex para deteccao
     DANGEROUS_PATTERNS = [
-        r"[\;\&\|]{2,}",           # ;; && ||
-        r"\$\([^\)]+\)",           # $(command)
-        r"\$\{[^\}]+\}",           # ${var}
-        r"`[^`]+`",                # `command`
-        r"\\x[0-9a-fA-F]{2}",      # \xNN hex encoding
-        r"base64",                  # base64 encoding
+        r"[\;\&\|]{2,}",  # ;; && ||
+        r"\$\([^\)]+\)",  # $(command)
+        r"\$\{[^\}]+\}",  # ${var}
+        r"`[^`]+`",  # `command`
+        r"\\x[0-9a-fA-F]{2}",  # \xNN hex encoding
+        r"base64",  # base64 encoding
     ]
 
     def __init__(self, strict_mode: bool = True):
@@ -118,9 +178,7 @@ class ToolValidator:
             strict_mode: Se True, bloqueia qualquer tool fora do namespace permitido
         """
         self.strict_mode = strict_mode
-        self._dangerous_patterns = [
-            re.compile(p, re.IGNORECASE) for p in self.DANGEROUS_PATTERNS
-        ]
+        self._dangerous_patterns = [re.compile(p, re.IGNORECASE) for p in self.DANGEROUS_PATTERNS]
 
     def validate(self, tool_name: str, inputs: Optional[dict] = None) -> ValidationResult:
         """
@@ -218,10 +276,7 @@ class ToolValidator:
             return all(self._is_safe_value(v) for v in value)
 
         if isinstance(value, dict):
-            return all(
-                self._is_safe_value(k) and self._is_safe_value(v)
-                for k, v in value.items()
-            )
+            return all(self._is_safe_value(k) and self._is_safe_value(v) for k, v in value.items())
 
         return True
 
@@ -280,7 +335,6 @@ if __name__ == "__main__":
         ("mcp__rag-tools__search_hybrid", True),
         ("mcp__rag-tools__get_document", True),
         ("mcp__rag-tools__list_sources", True),
-
         # Bloqueadas
         ("bash", False),
         ("read_file", False),
@@ -304,7 +358,6 @@ if __name__ == "__main__":
         # Seguros
         ({"query": "politica de IA", "top_k": 5}, True),
         ({"doc_id": 123}, True),
-
         # Perigosos
         ({"query": "rm -rf /"}, False),
         ({"query": "$(cat /etc/passwd)"}, False),

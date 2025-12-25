@@ -2,15 +2,14 @@
 
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import apsw
 import sqlite_vec
 from fastembed import TextEmbedding
 
-from .options import ChunkingStrategy, EmbeddingModel
+from .options import ChunkingStrategy
 
 
 @dataclass
@@ -24,6 +23,7 @@ class IngestResult:
         source: Source file path
         error: Error message if failed
     """
+
     success: bool
     doc_id: Optional[int] = None
     chunks: int = 0
@@ -50,6 +50,7 @@ class Document:
         doc_type: Document type (pdf, docx, html, txt)
         metadata: Additional metadata
     """
+
     content: str
     source: str
     doc_type: str = "txt"
@@ -122,7 +123,8 @@ class IngestEngine:
             cursor = conn.cursor()
 
             # Create documents table
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS documentos (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nome TEXT NOT NULL,
@@ -133,7 +135,8 @@ class IngestEngine:
                     metadata TEXT,
                     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-            """)
+            """
+            )
 
             # Get embedding dimensions from model
             # BGE models: small=384, base=768, large=1024
@@ -144,12 +147,14 @@ class IngestEngine:
                 dims = 1024
 
             # Create vector table
-            cursor.execute(f"""
+            cursor.execute(
+                f"""
                 CREATE VIRTUAL TABLE IF NOT EXISTS vec_documentos USING vec0(
                     doc_id INTEGER PRIMARY KEY,
                     embedding FLOAT[{dims}]
                 )
-            """)
+            """
+            )
         finally:
             conn.close()
 
@@ -185,7 +190,8 @@ class IngestEngine:
     def _chunk_sentence(self, text: str) -> list[str]:
         """Sentence-based chunking."""
         import re
-        sentences = re.split(r'(?<=[.!?])\s+', text)
+
+        sentences = re.split(r"(?<=[.!?])\s+", text)
 
         chunks = []
         current_chunk = []
@@ -196,7 +202,7 @@ class IngestEngine:
             if current_size + sentence_size > self.chunk_size and current_chunk:
                 chunks.append(" ".join(current_chunk))
                 # Keep overlap
-                overlap_words = " ".join(current_chunk).split()[-self.chunk_overlap:]
+                overlap_words = " ".join(current_chunk).split()[-self.chunk_overlap :]
                 current_chunk = [" ".join(overlap_words)]
                 current_size = len(overlap_words)
 
@@ -245,6 +251,7 @@ class IngestEngine:
         elif suffix == ".pdf":
             try:
                 import pypdf
+
                 reader = pypdf.PdfReader(str(file_path))
                 text = "\n".join(page.extract_text() or "" for page in reader.pages)
                 return text, "pdf"
@@ -254,6 +261,7 @@ class IngestEngine:
         elif suffix == ".docx":
             try:
                 import docx
+
                 doc = docx.Document(str(file_path))
                 text = "\n".join(para.text for para in doc.paragraphs)
                 return text, "docx"
@@ -263,17 +271,21 @@ class IngestEngine:
         elif suffix in (".html", ".htm"):
             try:
                 from bs4 import BeautifulSoup
+
                 html = file_path.read_text(encoding="utf-8")
                 soup = BeautifulSoup(html, "html.parser")
                 return soup.get_text(separator="\n"), "html"
             except ImportError:
-                raise ImportError("beautifulsoup4 required for HTML files: pip install beautifulsoup4")
+                raise ImportError(
+                    "beautifulsoup4 required for HTML files: pip install beautifulsoup4"
+                )
 
         elif suffix == ".md":
             return file_path.read_text(encoding="utf-8"), "markdown"
 
         elif suffix == ".json":
             import json
+
             data = json.loads(file_path.read_text(encoding="utf-8"))
             return json.dumps(data, indent=2), "json"
 
@@ -356,10 +368,7 @@ class IngestEngine:
             # Check for duplicates
             content_hash = self._compute_hash(content)
             existing = None
-            for row in cursor.execute(
-                "SELECT id FROM documentos WHERE hash = ?",
-                (content_hash,)
-            ):
+            for row in cursor.execute("SELECT id FROM documentos WHERE hash = ?", (content_hash,)):
                 existing = row[0]
                 break
 
@@ -374,12 +383,16 @@ class IngestEngine:
 
             # Insert document
             import json
+
             metadata_json = json.dumps(metadata) if metadata else None
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO documentos (nome, tipo, conteudo, caminho, hash, metadata)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (source, doc_type, content, file_path, content_hash, metadata_json))
+            """,
+                (source, doc_type, content, file_path, content_hash, metadata_json),
+            )
 
             doc_id = conn.last_insert_rowid()
 
@@ -393,10 +406,13 @@ class IngestEngine:
                 doc_embedding = embeddings[0].tolist()
                 embedding_bytes = sqlite_vec.serialize_float32(doc_embedding)
 
-                cursor.execute("""
+                cursor.execute(
+                    """
                     INSERT INTO vec_documentos (doc_id, embedding)
                     VALUES (?, ?)
-                """, (doc_id, embedding_bytes))
+                """,
+                    (doc_id, embedding_bytes),
+                )
 
             return IngestResult(
                 success=True,
@@ -504,10 +520,13 @@ class IngestEngine:
                         doc_embedding = embeddings[0].tolist()
                         embedding_bytes = sqlite_vec.serialize_float32(doc_embedding)
 
-                        cursor.execute("""
+                        cursor.execute(
+                            """
                             INSERT INTO vec_documentos (doc_id, embedding)
                             VALUES (?, ?)
-                        """, (doc_id, embedding_bytes))
+                        """,
+                            (doc_id, embedding_bytes),
+                        )
 
                         count += 1
 

@@ -9,16 +9,17 @@ import json
 import threading
 import time
 from collections import OrderedDict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Optional, TypeVar, Generic, Callable
+from typing import Any, Callable, Generic, Optional, TypeVar
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @dataclass
 class CacheEntry(Generic[T]):
     """Entrada do cache."""
+
     key: str
     value: T
     created_at: datetime
@@ -38,6 +39,7 @@ class CacheEntry(Generic[T]):
 @dataclass
 class CacheStats:
     """Estatísticas do cache."""
+
     hits: int = 0
     misses: int = 0
     evictions: int = 0
@@ -77,7 +79,7 @@ class LRUCache(Generic[T]):
     def _estimate_size(self, value: Any) -> int:
         """Estima tamanho em bytes de um valor."""
         try:
-            return len(json.dumps(value, default=str).encode('utf-8'))
+            return len(json.dumps(value, default=str).encode("utf-8"))
         except (TypeError, ValueError, UnicodeEncodeError):
             return 0  # Cannot serialize, estimate as zero
 
@@ -242,10 +244,7 @@ class LRUCache(Generic[T]):
             Número de entradas removidas
         """
         with self._lock:
-            expired_keys = [
-                key for key, entry in self._cache.items()
-                if entry.is_expired()
-            ]
+            expired_keys = [key for key, entry in self._cache.items() if entry.is_expired()]
             for key in expired_keys:
                 entry = self._cache[key]
                 del self._cache[key]
@@ -263,7 +262,7 @@ class EmbeddingCache:
 
     def _make_key(self, text: str) -> str:
         """Cria chave de cache para texto."""
-        return hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
     def get(self, text: str) -> Optional[list[float]]:
         """Obtém embedding do cache."""
@@ -300,7 +299,7 @@ class ResponseCache:
         # Incluir parametros extras na chave (ex: use_reranking)
         extra = ":".join(f"{k}={v}" for k, v in sorted(kwargs.items()))
         content = f"{query}:{top_k}:{extra}" if extra else f"{query}:{top_k}"
-        return hashlib.sha256(content.encode('utf-8')).hexdigest()[:16]
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 
     def get(self, query: str, top_k: int = 5, **kwargs) -> Optional[dict]:
         """Obtém resposta do cache."""
@@ -390,9 +389,9 @@ if __name__ == "__main__":
         return [0.5] * 384
 
     emb1 = emb_cache.get_or_compute("test text", fake_compute)
-    print(f"First call - computed")
+    print("First call - computed")
 
     emb2 = emb_cache.get_or_compute("test text", fake_compute)
-    print(f"Second call - from cache")
+    print("Second call - from cache")
 
     print(f"\nFinal stats: hits={emb_cache.stats.hits}, misses={emb_cache.stats.misses}")

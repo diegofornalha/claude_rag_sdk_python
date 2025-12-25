@@ -5,9 +5,7 @@
 # =============================================================================
 
 import hashlib
-import hmac
 import secrets
-import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -16,20 +14,22 @@ from typing import Optional
 
 class AuthScope(str, Enum):
     """Escopos de autorização."""
-    READ = "read"           # Buscar documentos
-    WRITE = "write"         # Criar/atualizar documentos
-    ADMIN = "admin"         # Acesso administrativo
-    METRICS = "metrics"     # Acessar métricas
+
+    READ = "read"  # Buscar documentos
+    WRITE = "write"  # Criar/atualizar documentos
+    ADMIN = "admin"  # Acesso administrativo
+    METRICS = "metrics"  # Acessar métricas
 
 
 @dataclass
 class APIKey:
     """Representação de uma API key."""
-    key_id: str                          # Identificador público
-    key_hash: str                        # Hash da chave (nunca armazenar plain)
-    name: str                            # Nome/descrição
-    scopes: list[AuthScope]              # Permissões
-    owner: str                           # Dono da chave
+
+    key_id: str  # Identificador público
+    key_hash: str  # Hash da chave (nunca armazenar plain)
+    name: str  # Nome/descrição
+    scopes: list[AuthScope]  # Permissões
+    owner: str  # Dono da chave
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: Optional[datetime] = None
     last_used_at: Optional[datetime] = None
@@ -57,7 +57,7 @@ class APIKey:
             "owner": self.owner,
             "created_at": self.created_at.isoformat(),
             "expires_at": self.expires_at.isoformat() if self.expires_at else None,
-            "last_used_at": self.last_used_at.isoformat() if self.last_used_at else None,
+            "last_used_at": (self.last_used_at.isoformat() if self.last_used_at else None),
             "is_active": self.is_active,
         }
 
@@ -65,6 +65,7 @@ class APIKey:
 @dataclass
 class AuthResult:
     """Resultado da autenticação."""
+
     authenticated: bool
     api_key: Optional[APIKey] = None
     error: Optional[str] = None
@@ -122,6 +123,7 @@ class APIKeyManager:
         expires_at = None
         if expires_in_days:
             from datetime import timedelta
+
             expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
 
         api_key = APIKey(
@@ -239,9 +241,10 @@ def get_key_manager() -> APIKeyManager:
 def authenticate(auth_header: Optional[str]) -> AuthResult:
     """Autentica usando header Authorization."""
     key = extract_api_key(auth_header)
-    return get_key_manager().authenticate(key) if key else AuthResult(
-        authenticated=False,
-        error="No authorization header"
+    return (
+        get_key_manager().authenticate(key)
+        if key
+        else AuthResult(authenticated=False, error="No authorization header")
     )
 
 
@@ -255,6 +258,7 @@ from pathlib import Path
 # Carregar variaveis de ambiente do .env
 try:
     from dotenv import load_dotenv, set_key
+
     _env_path = Path(__file__).parent.parent / ".env"
     load_dotenv(_env_path)
     _DOTENV_AVAILABLE = True
@@ -283,13 +287,15 @@ else:
         try:
             _env_path.touch(exist_ok=True)
             set_key(str(_env_path), "RAG_API_KEY", _api_key)
-            print(f"[AUTH] Nova API Key gerada e salva em .env")
+            print("[AUTH] Nova API Key gerada e salva em .env")
             print(f"[AUTH] RAG_API_KEY={_api_key[:12]}...")  # Apenas preview
         except Exception as e:
             print(f"[AUTH] Aviso: Nao foi possivel salvar no .env: {e}")
             print(f"[AUTH] API Key temporaria: {_api_key[:12]}...")  # Apenas preview
     else:
-        print(f"[AUTH] API Key temporaria (instale python-dotenv para persistir): {_api_key[:12]}...")  # Apenas preview
+        print(
+            f"[AUTH] API Key temporaria (instale python-dotenv para persistir): {_api_key[:12]}..."
+        )  # Apenas preview
 
 
 def is_auth_enabled() -> bool:
@@ -298,6 +304,7 @@ def is_auth_enabled() -> bool:
 
 
 from fastapi import Header
+
 
 async def verify_api_key(
     x_api_key: str = Header(None, alias="X-API-Key"),
@@ -316,7 +323,7 @@ async def verify_api_key(
     Raises:
         HTTPException 401 se inválida
     """
-    from fastapi import HTTPException, Header
+    from fastapi import HTTPException
 
     # Se auth está desabilitada, retorna placeholder
     if not is_auth_enabled():

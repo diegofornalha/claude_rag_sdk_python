@@ -6,14 +6,15 @@
 
 import math
 import re
+import sys
 from collections import Counter
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
+
 import apsw
 import sqlite_vec
 from fastembed import TextEmbedding
-from pathlib import Path
-import sys
 
 # Adicionar parent ao path para importar config
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -23,13 +24,14 @@ from core.config import get_config
 @dataclass
 class SearchResult:
     """Resultado de busca híbrida."""
+
     doc_id: int
     nome: str
     tipo: str
     content: str
-    vector_score: float      # Score da busca vetorial (0-1)
-    bm25_score: float        # Score BM25 normalizado (0-1)
-    hybrid_score: float      # Score combinado
+    vector_score: float  # Score da busca vetorial (0-1)
+    bm25_score: float  # Score BM25 normalizado (0-1)
+    hybrid_score: float  # Score combinado
     rank: int
 
 
@@ -50,9 +52,29 @@ class BM25:
         """Tokenização simples."""
         text = text.lower()
         # Remover pontuação e dividir em palavras
-        tokens = re.findall(r'\b\w+\b', text)
+        tokens = re.findall(r"\b\w+\b", text)
         # Remover stopwords básicas (português)
-        stopwords = {'de', 'da', 'do', 'e', 'a', 'o', 'que', 'em', 'para', 'com', 'um', 'uma', 'os', 'as', 'na', 'no', 'por', 'se', 'ao'}
+        stopwords = {
+            "de",
+            "da",
+            "do",
+            "e",
+            "a",
+            "o",
+            "que",
+            "em",
+            "para",
+            "com",
+            "um",
+            "uma",
+            "os",
+            "as",
+            "na",
+            "no",
+            "por",
+            "se",
+            "ao",
+        }
         return [t for t in tokens if t not in stopwords and len(t) > 2]
 
     def index(self, documents: list[tuple[int, str]]) -> None:
@@ -123,7 +145,9 @@ class BM25:
 
                 # TF com saturação
                 tf = tf_doc[term]
-                tf_normalized = (tf * (self.k1 + 1)) / (tf + self.k1 * (1 - self.b + self.b * doc_length / self.avg_doc_length))
+                tf_normalized = (tf * (self.k1 + 1)) / (
+                    tf + self.k1 * (1 - self.b + self.b * doc_length / self.avg_doc_length)
+                )
 
                 score += idf * tf_normalized
 
@@ -139,8 +163,8 @@ class HybridSearch:
     def __init__(
         self,
         db_path: str,
-        vector_weight: float = 0.7,     # Peso da busca vetorial
-        bm25_weight: float = 0.3,       # Peso do BM25
+        vector_weight: float = 0.7,  # Peso da busca vetorial
+        bm25_weight: float = 0.3,  # Peso do BM25
     ):
         self.db_path = db_path
         self.vector_weight = vector_weight
@@ -169,7 +193,9 @@ class HybridSearch:
             cursor = conn.cursor()
 
             documents = []
-            for row in cursor.execute("SELECT id, conteudo FROM documentos WHERE conteudo IS NOT NULL"):
+            for row in cursor.execute(
+                "SELECT id, conteudo FROM documentos WHERE conteudo IS NOT NULL"
+            ):
                 documents.append((row[0], row[1]))
         finally:
             conn.close()
@@ -179,7 +205,7 @@ class HybridSearch:
         self,
         query: str,
         top_k: int = 10,
-        vector_top_k: int = 20,         # Buscar mais no vetorial para combinar
+        vector_top_k: int = 20,  # Buscar mais no vetorial para combinar
     ) -> list[SearchResult]:
         """
         Busca híbrida.
@@ -201,12 +227,15 @@ class HybridSearch:
             cursor = conn.cursor()
 
             vector_results = {}
-            for row in cursor.execute("""
+            for row in cursor.execute(
+                """
                 SELECT v.doc_id, v.distance, d.nome, d.conteudo, d.tipo
                 FROM vec_documentos v
                 JOIN documentos d ON d.id = v.doc_id
                 WHERE v.embedding MATCH ? AND k = ?
-            """, (query_vec, vector_top_k)):
+            """,
+                (query_vec, vector_top_k),
+            ):
                 doc_id, distance, nome, conteudo, tipo = row
                 similarity = max(0, 1 - distance)
                 vector_results[doc_id] = {
@@ -235,12 +264,16 @@ class HybridSearch:
             conn_missing = self._get_connection()
             try:
                 cursor_missing = conn_missing.cursor()
-                placeholders = ','.join('?' * len(missing_doc_ids))
+                placeholders = ",".join("?" * len(missing_doc_ids))
                 for row in cursor_missing.execute(
                     f"SELECT id, nome, conteudo, tipo FROM documentos WHERE id IN ({placeholders})",
-                    missing_doc_ids
+                    missing_doc_ids,
                 ):
-                    missing_docs[row[0]] = {"nome": row[1], "conteudo": row[2], "tipo": row[3]}
+                    missing_docs[row[0]] = {
+                        "nome": row[1],
+                        "conteudo": row[2],
+                        "tipo": row[3],
+                    }
             finally:
                 conn_missing.close()
 
@@ -250,10 +283,7 @@ class HybridSearch:
             bm25_score = normalized_bm25.get(doc_id, 0)
 
             # Score híbrido ponderado
-            hybrid_score = (
-                self.vector_weight * vector_score +
-                self.bm25_weight * bm25_score
-            )
+            hybrid_score = self.vector_weight * vector_score + self.bm25_weight * bm25_score
 
             # Obter dados do documento
             if doc_id in vector_results:
@@ -263,16 +293,18 @@ class HybridSearch:
             else:
                 continue
 
-            results.append(SearchResult(
-                doc_id=doc_id,
-                nome=doc_data["nome"],
-                tipo=doc_data["tipo"],
-                content=doc_data["conteudo"][:1000] if doc_data["conteudo"] else "",
-                vector_score=round(vector_score, 3),
-                bm25_score=round(bm25_score, 3),
-                hybrid_score=round(hybrid_score, 3),
-                rank=0,
-            ))
+            results.append(
+                SearchResult(
+                    doc_id=doc_id,
+                    nome=doc_data["nome"],
+                    tipo=doc_data["tipo"],
+                    content=doc_data["conteudo"][:1000] if doc_data["conteudo"] else "",
+                    vector_score=round(vector_score, 3),
+                    bm25_score=round(bm25_score, 3),
+                    hybrid_score=round(hybrid_score, 3),
+                    rank=0,
+                )
+            )
 
         # Ordenar por score híbrido
         results.sort(key=lambda x: x.hybrid_score, reverse=True)
@@ -306,4 +338,6 @@ if __name__ == "__main__":
         results = hybrid.search(query, top_k=3)
         for r in results:
             print(f"  [{r.rank}] {r.nome}")
-            print(f"      Hybrid: {r.hybrid_score:.3f} (vec: {r.vector_score:.3f}, bm25: {r.bm25_score:.3f})")
+            print(
+                f"      Hybrid: {r.hybrid_score:.3f} (vec: {r.vector_score:.3f}, bm25: {r.bm25_score:.3f})"
+            )

@@ -1,15 +1,14 @@
 """Main ClaudeRAG class - unified interface for RAG operations."""
 
-import os
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional, Union
+from typing import AsyncIterator, Optional, Union
 
 from agentfs_sdk import AgentFS, AgentFSOptions
 
-from .options import ClaudeRAGOptions
-from .search import SearchEngine, SearchResult, HybridSearchResult
-from .ingest import IngestEngine, IngestResult
 from .agent import AgentEngine, AgentResponse, StreamChunk
+from .ingest import IngestEngine, IngestResult
+from .options import ClaudeRAGOptions
+from .search import HybridSearchResult, SearchEngine, SearchResult
 
 
 class ClaudeRAG:
@@ -74,10 +73,12 @@ class ClaudeRAG:
         """
         # Open AgentFS
         agentfs_path = options.get_agentfs_path()
-        agentfs = await AgentFS.open(AgentFSOptions(
-            id=options.id,
-            path=agentfs_path if options.path else None,
-        ))
+        agentfs = await AgentFS.open(
+            AgentFSOptions(
+                id=options.id,
+                path=agentfs_path if options.path else None,
+            )
+        )
 
         # Initialize search engine
         search_engine = SearchEngine(
@@ -279,16 +280,20 @@ class ClaudeRAG:
             # Use AgentEngine with Claude Agent SDK (uses Claude Code subscription)
             if self._agent is None:
                 from .agent import AgentEngine
+
                 self._agent = AgentEngine(
                     options=self._options,
                     mcp_server_path=None,  # No MCP server needed
                 )
             response = await self._agent.query(question)
 
-            await self.tools.success(call_id, {
-                "citations": len(response.citations),
-                "confidence": response.confidence,
-            })
+            await self.tools.success(
+                call_id,
+                {
+                    "citations": len(response.citations),
+                    "confidence": response.confidence,
+                },
+            )
 
             return response
 

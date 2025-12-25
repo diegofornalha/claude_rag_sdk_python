@@ -7,8 +7,6 @@ This server can be used with Claude Agent SDK or any MCP-compatible client.
 
 import time
 from pathlib import Path
-from typing import Optional
-import os
 
 from mcp.server.fastmcp import FastMCP
 
@@ -63,12 +61,9 @@ async def _get_rag():
 # RAG SEARCH TOOLS
 # =============================================================================
 
+
 @mcp.tool()
-async def search_documents(
-    query: str,
-    top_k: int = 5,
-    use_reranking: bool = True
-) -> list:
+async def search_documents(query: str, top_k: int = 5, use_reranking: bool = True) -> list:
     """
     Semantic search in indexed documents.
 
@@ -115,11 +110,7 @@ async def search_documents(
 
 
 @mcp.tool()
-async def search_hybrid(
-    query: str,
-    top_k: int = 5,
-    vector_weight: float = 0.7
-) -> list:
+async def search_hybrid(query: str, top_k: int = 5, vector_weight: float = 0.7) -> list:
     """
     Hybrid search combining BM25 (lexical) and vector search.
 
@@ -218,6 +209,7 @@ async def count_documents() -> dict:
 # AGENTFS FILESYSTEM TOOLS
 # =============================================================================
 
+
 @mcp.tool()
 async def create_file(path: str, content: str) -> dict:
     """
@@ -300,11 +292,13 @@ async def list_files(directory: str = "/") -> dict:
 
         files = []
         for entry in entries:
-            files.append({
-                "name": entry.name,
-                "size": entry.size if hasattr(entry, 'size') else 0,
-                "is_dir": entry.is_dir() if hasattr(entry, 'is_dir') else False,
-            })
+            files.append(
+                {
+                    "name": entry.name,
+                    "size": entry.size if hasattr(entry, "size") else 0,
+                    "is_dir": entry.is_dir() if hasattr(entry, "is_dir") else False,
+                }
+            )
 
         return {
             "success": True,
@@ -320,6 +314,7 @@ async def list_files(directory: str = "/") -> dict:
 # =============================================================================
 # AGENTFS KV STORE TOOLS
 # =============================================================================
+
 
 @mcp.tool()
 async def set_state(key: str, value: str) -> dict:
@@ -404,6 +399,7 @@ async def list_states(prefix: str = "") -> dict:
 # =============================================================================
 # METRICS & HEALTH TOOLS
 # =============================================================================
+
 
 @mcp.tool()
 async def get_metrics() -> dict:

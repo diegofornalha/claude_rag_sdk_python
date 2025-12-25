@@ -5,13 +5,12 @@
 # =============================================================================
 
 from dataclasses import dataclass
-from typing import Optional
-import time
 
 
 @dataclass
 class RerankResult:
     """Resultado após re-ranking."""
+
     doc_id: int
     content: str
     original_score: float
@@ -42,6 +41,7 @@ class CrossEncoderReranker:
         self._load_attempted = True
         try:
             from sentence_transformers import CrossEncoder
+
             self._model = CrossEncoder(self.model_name)
         except ImportError:
             # Fallback: usar scoring simples se não tiver sentence-transformers
@@ -82,14 +82,16 @@ class CrossEncoderReranker:
 
             results = []
             for i, (doc_id, content, original_score, metadata) in enumerate(documents):
-                results.append(RerankResult(
-                    doc_id=doc_id,
-                    content=content,
-                    original_score=original_score,
-                    rerank_score=float(scores[i]),
-                    final_rank=0,
-                    metadata=metadata,
-                ))
+                results.append(
+                    RerankResult(
+                        doc_id=doc_id,
+                        content=content,
+                        original_score=original_score,
+                        rerank_score=float(scores[i]),
+                        final_rank=0,
+                        metadata=metadata,
+                    )
+                )
         else:
             # Fallback: usar score original com boost por match exato
             results = []
@@ -108,14 +110,16 @@ class CrossEncoderReranker:
 
                 rerank_score = original_score + term_boost + phrase_boost
 
-                results.append(RerankResult(
-                    doc_id=doc_id,
-                    content=content,
-                    original_score=original_score,
-                    rerank_score=rerank_score,
-                    final_rank=0,
-                    metadata=metadata,
-                ))
+                results.append(
+                    RerankResult(
+                        doc_id=doc_id,
+                        content=content,
+                        original_score=original_score,
+                        rerank_score=rerank_score,
+                        final_rank=0,
+                        metadata=metadata,
+                    )
+                )
 
         # Ordenar por rerank_score
         results.sort(key=lambda x: x.rerank_score, reverse=True)
@@ -183,14 +187,16 @@ class LightweightReranker:
             # Score final
             rerank_score = original_score + exact_match + term_coverage + position_score
 
-            results.append(RerankResult(
-                doc_id=doc_id,
-                content=content,
-                original_score=original_score,
-                rerank_score=round(rerank_score, 4),
-                final_rank=0,
-                metadata=metadata,
-            ))
+            results.append(
+                RerankResult(
+                    doc_id=doc_id,
+                    content=content,
+                    original_score=original_score,
+                    rerank_score=round(rerank_score, 4),
+                    final_rank=0,
+                    metadata=metadata,
+                )
+            )
 
         # Ordenar por rerank_score
         results.sort(key=lambda x: x.rerank_score, reverse=True)
@@ -203,7 +209,9 @@ class LightweightReranker:
 
 
 # Factory para criar reranker apropriado
-def create_reranker(use_cross_encoder: bool = False) -> CrossEncoderReranker | LightweightReranker:
+def create_reranker(
+    use_cross_encoder: bool = False,
+) -> CrossEncoderReranker | LightweightReranker:
     """
     Cria reranker apropriado.
 
@@ -224,10 +232,30 @@ if __name__ == "__main__":
 
     # Documentos de teste
     documents = [
-        (1, "A política de IA estabelece princípios obrigatórios para uso de inteligência artificial.", 0.8, {"nome": "Doc1"}),
-        (2, "Arquitetura RAG enterprise com componentes de busca vetorial e reranking.", 0.75, {"nome": "Doc2"}),
-        (3, "Métricas de monitoramento incluem latência, throughput e taxa de erro.", 0.7, {"nome": "Doc3"}),
-        (4, "Os princípios obrigatórios da política incluem transparência e responsabilidade.", 0.65, {"nome": "Doc4"}),
+        (
+            1,
+            "A política de IA estabelece princípios obrigatórios para uso de inteligência artificial.",
+            0.8,
+            {"nome": "Doc1"},
+        ),
+        (
+            2,
+            "Arquitetura RAG enterprise com componentes de busca vetorial e reranking.",
+            0.75,
+            {"nome": "Doc2"},
+        ),
+        (
+            3,
+            "Métricas de monitoramento incluem latência, throughput e taxa de erro.",
+            0.7,
+            {"nome": "Doc3"},
+        ),
+        (
+            4,
+            "Os princípios obrigatórios da política incluem transparência e responsabilidade.",
+            0.65,
+            {"nome": "Doc4"},
+        ),
     ]
 
     query = "princípios obrigatórios da política"
@@ -238,7 +266,9 @@ if __name__ == "__main__":
     results = reranker.rerank(query, documents, top_k=3)
 
     for r in results:
-        print(f"  [{r.final_rank}] Doc {r.doc_id}: {r.rerank_score:.3f} (original: {r.original_score:.3f})")
+        print(
+            f"  [{r.final_rank}] Doc {r.doc_id}: {r.rerank_score:.3f} (original: {r.original_score:.3f})"
+        )
         print(f"      {r.content[:60]}...")
 
     # Testar cross-encoder (se disponível)
@@ -247,4 +277,6 @@ if __name__ == "__main__":
     results = reranker.rerank(query, documents, top_k=3)
 
     for r in results:
-        print(f"  [{r.final_rank}] Doc {r.doc_id}: {r.rerank_score:.3f} (original: {r.original_score:.3f})")
+        print(
+            f"  [{r.final_rank}] Doc {r.doc_id}: {r.rerank_score:.3f} (original: {r.original_score:.3f})"
+        )

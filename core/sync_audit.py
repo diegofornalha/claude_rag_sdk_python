@@ -7,19 +7,19 @@ Funciona com o AgentFS compartilhado entre processos.
 =============================================================================
 """
 
-import os
-import time
-import json
 import functools
-import threading
+import json
+import os
 import queue
-from typing import Any, Callable, Optional
-from pathlib import Path
-from dataclasses import dataclass, asdict
-from datetime import datetime
 
 # Importar logger
 import sys
+import threading
+import time
+from dataclasses import asdict, dataclass
+from pathlib import Path
+from typing import Any, Callable, Optional
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from core.logger import logger
 
@@ -27,6 +27,7 @@ from core.logger import logger
 @dataclass
 class ToolCallRecord:
     """Registro de uma tool call."""
+
     tool_name: str
     started_at: int
     completed_at: int
@@ -89,14 +90,18 @@ class SyncAuditQueue:
         if not self._running:
             self._start_worker()
 
-        logger.info("SyncAudit inicializado", session_id=session_id, audit_file=str(self._audit_file))
+        logger.info(
+            "SyncAudit inicializado",
+            session_id=session_id,
+            audit_file=str(self._audit_file),
+        )
 
     def _load_existing_records(self):
         """Carrega registros existentes do arquivo."""
         self._records = []
         if self._audit_file and self._audit_file.exists():
             try:
-                with open(self._audit_file, 'r') as f:
+                with open(self._audit_file, "r") as f:
                     for line in f:
                         line = line.strip()
                         if line:
@@ -130,19 +135,21 @@ class SyncAuditQueue:
             return
 
         try:
-            with open(self._audit_file, 'a') as f:
-                f.write(json.dumps(asdict(record)) + '\n')
+            with open(self._audit_file, "a") as f:
+                f.write(json.dumps(asdict(record)) + "\n")
             self._records.append(record)
         except Exception as e:
             logger.error(f"Erro ao persistir audit record: {e}")
 
-    def record(self,
-               tool_name: str,
-               started_at: int,
-               completed_at: int,
-               parameters: dict,
-               result: Optional[Any] = None,
-               error: Optional[str] = None):
+    def record(
+        self,
+        tool_name: str,
+        started_at: int,
+        completed_at: int,
+        parameters: dict,
+        result: Optional[Any] = None,
+        error: Optional[str] = None,
+    ):
         """
         Enfileira um registro de tool call.
         Non-blocking - retorna imediatamente.
@@ -157,7 +164,7 @@ class SyncAuditQueue:
             parameters=parameters,
             result=result,
             error=error,
-            session_id=self._session_id
+            session_id=self._session_id,
         )
 
         self._queue.put(record)
@@ -170,12 +177,7 @@ class SyncAuditQueue:
     def get_stats(self) -> dict:
         """Retorna estatisticas de auditoria."""
         if not self._records:
-            return {
-                "total_calls": 0,
-                "by_tool": {},
-                "errors": 0,
-                "avg_duration_ms": 0
-            }
+            return {"total_calls": 0, "by_tool": {}, "errors": 0, "avg_duration_ms": 0}
 
         by_tool = {}
         total_duration = 0
@@ -192,7 +194,7 @@ class SyncAuditQueue:
             "by_tool": by_tool,
             "errors": errors,
             "avg_duration_ms": round(total_duration / len(self._records), 2),
-            "session_id": self._session_id
+            "session_id": self._session_id,
         }
 
     def shutdown(self):
@@ -230,6 +232,7 @@ def audit_sync_tool(tool_name: str):
             # ... codigo async da tool ...
             return results
     """
+
     def decorator(func: Callable):
         def _serialize_result(result):
             """Serializa result de forma segura"""
@@ -250,7 +253,7 @@ def audit_sync_tool(tool_name: str):
             """Captura parametros de forma segura"""
             return {
                 "args": [str(arg)[:200] for arg in args] if args else [],
-                "kwargs": {k: str(v)[:200] for k, v in kwargs.items()} if kwargs else {}
+                "kwargs": ({k: str(v)[:200] for k, v in kwargs.items()} if kwargs else {}),
             }
 
         # Wrapper async para funcoes assincronas
@@ -269,7 +272,7 @@ def audit_sync_tool(tool_name: str):
                     started_at=start_time,
                     completed_at=end_time,
                     parameters=parameters,
-                    result=_serialize_result(result)
+                    result=_serialize_result(result),
                 )
 
                 return result
@@ -281,7 +284,7 @@ def audit_sync_tool(tool_name: str):
                     started_at=start_time,
                     completed_at=end_time,
                     parameters=parameters,
-                    error=str(e)
+                    error=str(e),
                 )
                 raise
 
@@ -301,7 +304,7 @@ def audit_sync_tool(tool_name: str):
                     started_at=start_time,
                     completed_at=end_time,
                     parameters=parameters,
-                    result=_serialize_result(result)
+                    result=_serialize_result(result),
                 )
 
                 return result
@@ -313,13 +316,15 @@ def audit_sync_tool(tool_name: str):
                     started_at=start_time,
                     completed_at=end_time,
                     parameters=parameters,
-                    error=str(e)
+                    error=str(e),
                 )
                 raise
 
         # Detecta se funcao eh async e retorna o wrapper apropriado
         import asyncio
+
         if asyncio.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
+
     return decorator

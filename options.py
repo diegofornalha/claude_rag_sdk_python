@@ -1,21 +1,23 @@
 """Configuration options for ClaudeRAG SDK."""
 
-from dataclasses import dataclass, field
+import os
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-import os
 
 
 class EmbeddingModel(Enum):
     """Available embedding models."""
+
     BGE_SMALL = "BAAI/bge-small-en-v1.5"  # 384 dims, fastest
-    BGE_BASE = "BAAI/bge-base-en-v1.5"    # 768 dims, balanced
+    BGE_BASE = "BAAI/bge-base-en-v1.5"  # 768 dims, balanced
     BGE_LARGE = "BAAI/bge-large-en-v1.5"  # 1024 dims, best quality
 
 
 class ChunkingStrategy(Enum):
     """Document chunking strategies."""
+
     FIXED = "fixed"
     SENTENCE = "sentence"
     PARAGRAPH = "paragraph"
@@ -24,6 +26,7 @@ class ChunkingStrategy(Enum):
 
 class AgentModel(Enum):
     """Claude models for agent queries (versões estáveis 4.5)."""
+
     HAIKU = "haiku"  # Claude Haiku 4.5 (default, rápido)
     SONNET = "sonnet"  # Claude Sonnet 4.5 (balanceado)
     OPUS = "opus"  # Claude Opus 4.5 (mais capaz)
@@ -67,6 +70,7 @@ class ClaudeRAGOptions:
         ...     enable_reranking=True
         ... )
     """
+
     # Identity
     id: Optional[str] = None
     path: Optional[str] = None
@@ -155,6 +159,7 @@ class ClaudeRAGOptions:
             CLAUDE_RAG_EMBEDDING_MODEL=BAAI/bge-base-en-v1.5
             CLAUDE_RAG_ENABLE_RERANKING=true
         """
+
         def get_env(key: str, default=None):
             return os.getenv(f"{prefix}{key}", default)
 

@@ -19,6 +19,7 @@ class AgentResponse:
         tool_calls: List of tools used
         tokens_used: Token count
     """
+
     answer: str
     citations: list[dict] = field(default_factory=list)
     confidence: float = 0.0
@@ -44,6 +45,7 @@ class StreamChunk:
         tool_use: Tool being used (if any)
         done: Whether streaming is complete
     """
+
     text: Optional[str] = None
     tool_use: Optional[dict] = None
     done: bool = False
@@ -131,7 +133,7 @@ Sempre use search_documents antes de responder qualquer pergunta."""
 
         # Set working directory for file creation
         import os
-        from pathlib import Path
+
         outputs_dir = Path(os.getcwd()) / "outputs"
         outputs_dir.mkdir(parents=True, exist_ok=True)
 
@@ -171,10 +173,11 @@ Sempre use search_documents antes de responder qualquer pergunta."""
             AgentResponse with answer and citations
         """
         try:
-            from claude_agent_sdk import ClaudeSDKClient, AssistantMessage, TextBlock, ToolUseBlock
+            from claude_agent_sdk import AssistantMessage, ClaudeSDKClient, TextBlock, ToolUseBlock
         except ImportError as e:
             print(f"[DEBUG] Import error details: {e}")
             import traceback
+
             traceback.print_exc()
             raise ImportError(
                 f"claude-agent-sdk required for agent queries: pip install claude-agent-sdk (original error: {e})"
@@ -194,10 +197,12 @@ Sempre use search_documents antes de responder qualquer pergunta."""
                         if isinstance(block, TextBlock):
                             response_text += block.text
                         elif isinstance(block, ToolUseBlock):
-                            tool_calls.append({
-                                "name": block.name,
-                                "input": block.input,
-                            })
+                            tool_calls.append(
+                                {
+                                    "name": block.name,
+                                    "input": block.input,
+                                }
+                            )
 
         # Parse citations from response
         citations, confidence = self._parse_response(response_text)
@@ -219,7 +224,8 @@ Sempre use search_documents antes de responder qualquer pergunta."""
             StreamChunk objects with text or tool use info
         """
         try:
-            from claude_agent_sdk import query as sdk_query, AssistantMessage, TextBlock, ToolUseBlock
+            from claude_agent_sdk import AssistantMessage, TextBlock, ToolUseBlock
+            from claude_agent_sdk import query as sdk_query
         except ImportError:
             raise ImportError(
                 "claude-agent-sdk required for agent queries: pip install claude-agent-sdk"
@@ -233,10 +239,12 @@ Sempre use search_documents antes de responder qualquer pergunta."""
                     if isinstance(block, TextBlock):
                         yield StreamChunk(text=block.text)
                     elif isinstance(block, ToolUseBlock):
-                        yield StreamChunk(tool_use={
-                            "name": block.name,
-                            "input": block.input,
-                        })
+                        yield StreamChunk(
+                            tool_use={
+                                "name": block.name,
+                                "input": block.input,
+                            }
+                        )
 
         yield StreamChunk(done=True)
 
@@ -354,9 +362,7 @@ class SimpleAgent:
         try:
             import anthropic
         except ImportError:
-            raise ImportError(
-                "anthropic required for SimpleAgent: pip install anthropic"
-            )
+            raise ImportError("anthropic required for SimpleAgent: pip install anthropic")
 
         # Retrieve relevant documents
         results = await self.search_engine.search(question, top_k=top_k)
@@ -364,9 +370,7 @@ class SimpleAgent:
         # Build context
         context_parts = []
         for r in results:
-            context_parts.append(
-                f"[Fonte: {r.source}]\n{r.content}\n"
-            )
+            context_parts.append(f"[Fonte: {r.source}]\n{r.content}\n")
         context = "\n---\n".join(context_parts)
 
         # Build prompt
@@ -392,10 +396,7 @@ Responda baseado APENAS nos documentos acima. Inclua citações."""
         answer = message.content[0].text if message.content else ""
 
         # Parse response
-        citations = [
-            {"source": r.source, "quote": r.content[:200]}
-            for r in results[:3]
-        ]
+        citations = [{"source": r.source, "quote": r.content[:200]} for r in results[:3]]
 
         return AgentResponse(
             answer=answer,

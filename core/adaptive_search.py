@@ -6,17 +6,20 @@
 
 from dataclasses import dataclass
 from typing import List, Protocol
+
 from core.config import get_config
 
 
 class SearchResultProtocol(Protocol):
     """Protocol para objetos de resultado de busca."""
+
     similarity: float
 
 
 @dataclass
 class AdaptiveDecision:
     """Decisão do top-k adaptativo."""
+
     original_k: int
     adjusted_k: int
     reason: str
@@ -98,10 +101,7 @@ class AdaptiveTopK:
 
         # Baixa confiança: aumentar número de resultados
         elif top_similarity < self.low_confidence_threshold:
-            adjusted_k = min(
-                int(base_top_k * self.low_confidence_multiplier),
-                len(results)
-            )
+            adjusted_k = min(int(base_top_k * self.low_confidence_multiplier), len(results))
             return AdaptiveDecision(
                 original_k=base_top_k,
                 adjusted_k=adjusted_k,
@@ -177,7 +177,7 @@ def apply_adaptive_topk(
     decision = adapter.calculate_optimal_k(results, base_top_k)
 
     # Retornar resultados ajustados
-    return results[:decision.adjusted_k], decision
+    return results[: decision.adjusted_k], decision
 
 
 # Aliases para compatibilidade

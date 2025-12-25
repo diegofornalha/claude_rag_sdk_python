@@ -8,17 +8,17 @@
 import json
 import sqlite3
 import threading
-import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 
 class AuditEventType(str, Enum):
     """Tipos de eventos de auditoria."""
+
     TOOL_CALL = "tool_call"
     TOOL_BLOCKED = "tool_blocked"
     PROMPT_BLOCKED = "prompt_blocked"
@@ -31,6 +31,7 @@ class AuditEventType(str, Enum):
 
 class AuditSeverity(str, Enum):
     """Severidade do evento."""
+
     INFO = "info"
     WARNING = "warning"
     CRITICAL = "critical"
@@ -39,6 +40,7 @@ class AuditSeverity(str, Enum):
 @dataclass
 class AuditEvent:
     """Evento de auditoria."""
+
     event_id: str
     event_type: AuditEventType
     severity: AuditSeverity
@@ -72,6 +74,7 @@ class AuditEvent:
 @dataclass
 class AuditSummary:
     """Resumo de auditoria para uma conversa."""
+
     conversation_id: str
     total_events: int
     tool_calls: int
@@ -132,7 +135,8 @@ class AuditLogger:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
         with sqlite3.connect(self.db_path) as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS audit_events (
                     event_id TEXT PRIMARY KEY,
                     event_type TEXT NOT NULL,
@@ -147,25 +151,34 @@ class AuditLogger:
                     blocked_reason TEXT,
                     metadata_json TEXT
                 )
-            """)
+            """
+            )
 
             # Indices para queries comuns
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_audit_conversation
                 ON audit_events(conversation_id)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_audit_timestamp
                 ON audit_events(timestamp)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_audit_type
                 ON audit_events(event_type)
-            """)
-            conn.execute("""
+            """
+            )
+            conn.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_audit_tool
                 ON audit_events(tool_name)
-            """)
+            """
+            )
 
             conn.commit()
 
@@ -182,27 +195,30 @@ class AuditLogger:
         """Persiste evento no banco."""
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO audit_events (
                         event_id, event_type, severity, timestamp,
                         conversation_id, user_id, tool_name,
                         inputs_json, outputs_json, duration_ms,
                         blocked_reason, metadata_json
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    event.event_id,
-                    event.event_type.value,
-                    event.severity.value,
-                    event.timestamp.isoformat(),
-                    event.conversation_id,
-                    event.user_id,
-                    event.tool_name,
-                    json.dumps(event.inputs) if event.inputs else None,
-                    json.dumps(event.outputs) if event.outputs else None,
-                    event.duration_ms,
-                    event.blocked_reason,
-                    json.dumps(event.metadata) if event.metadata else None,
-                ))
+                """,
+                    (
+                        event.event_id,
+                        event.event_type.value,
+                        event.severity.value,
+                        event.timestamp.isoformat(),
+                        event.conversation_id,
+                        event.user_id,
+                        event.tool_name,
+                        json.dumps(event.inputs) if event.inputs else None,
+                        json.dumps(event.outputs) if event.outputs else None,
+                        event.duration_ms,
+                        event.blocked_reason,
+                        json.dumps(event.metadata) if event.metadata else None,
+                    ),
+                )
                 conn.commit()
 
     def log_tool_call(
@@ -340,7 +356,7 @@ class AuditLogger:
         """
         event = AuditEvent(
             event_id=str(uuid.uuid4()),
-            event_type=AuditEventType.AUTH_SUCCESS if success else AuditEventType.AUTH_FAILURE,
+            event_type=(AuditEventType.AUTH_SUCCESS if success else AuditEventType.AUTH_FAILURE),
             severity=AuditSeverity.INFO if success else AuditSeverity.WARNING,
             timestamp=datetime.now(),
             conversation_id=self._conversation_id,
@@ -429,7 +445,8 @@ class AuditLogger:
             conn.row_factory = sqlite3.Row
 
             # Estatisticas gerais
-            stats = conn.execute("""
+            stats = conn.execute(
+                """
                 SELECT
                     COUNT(*) as total,
                     SUM(CASE WHEN event_type = 'tool_call' THEN 1 ELSE 0 END) as tool_calls,
@@ -439,21 +456,35 @@ class AuditLogger:
                     MAX(timestamp) as end_time
                 FROM audit_events
                 WHERE conversation_id = ?
-            """, (conversation_id,)).fetchone()
+            """,
+                (conversation_id,),
+            ).fetchone()
 
             # Tools usadas
-            tools_used = [row[0] for row in conn.execute("""
+            tools_used = [
+                row[0]
+                for row in conn.execute(
+                    """
                 SELECT DISTINCT tool_name
                 FROM audit_events
                 WHERE conversation_id = ? AND event_type = 'tool_call' AND tool_name IS NOT NULL
-            """, (conversation_id,))]
+            """,
+                    (conversation_id,),
+                )
+            ]
 
             # Tools bloqueadas
-            blocked_tools = [row[0] for row in conn.execute("""
+            blocked_tools = [
+                row[0]
+                for row in conn.execute(
+                    """
                 SELECT DISTINCT tool_name
                 FROM audit_events
                 WHERE conversation_id = ? AND event_type = 'tool_blocked' AND tool_name IS NOT NULL
-            """, (conversation_id,))]
+            """,
+                    (conversation_id,),
+                )
+            ]
 
             return AuditSummary(
                 conversation_id=conversation_id,
@@ -461,8 +492,10 @@ class AuditLogger:
                 tool_calls=stats["tool_calls"] or 0,
                 blocked_attempts=stats["blocked"] or 0,
                 errors=stats["errors"] or 0,
-                start_time=datetime.fromisoformat(stats["start_time"]) if stats["start_time"] else None,
-                end_time=datetime.fromisoformat(stats["end_time"]) if stats["end_time"] else None,
+                start_time=(
+                    datetime.fromisoformat(stats["start_time"]) if stats["start_time"] else None
+                ),
+                end_time=(datetime.fromisoformat(stats["end_time"]) if stats["end_time"] else None),
                 tools_used=tools_used,
                 blocked_tools=blocked_tools,
             )
@@ -486,18 +519,24 @@ class AuditLogger:
             conn.row_factory = sqlite3.Row
 
             if event_type:
-                rows = conn.execute("""
+                rows = conn.execute(
+                    """
                     SELECT * FROM audit_events
                     WHERE event_type = ?
                     ORDER BY timestamp DESC
                     LIMIT ?
-                """, (event_type.value, limit))
+                """,
+                    (event_type.value, limit),
+                )
             else:
-                rows = conn.execute("""
+                rows = conn.execute(
+                    """
                     SELECT * FROM audit_events
                     ORDER BY timestamp DESC
                     LIMIT ?
-                """, (limit,))
+                """,
+                    (limit,),
+                )
 
             return [self._row_to_event(row) for row in rows]
 
@@ -511,19 +550,21 @@ class AuditLogger:
         Returns:
             Lista de eventos de seguranca
         """
-        cutoff = datetime.now().isoformat()
+        datetime.now().isoformat()
         # Simplificado: pegar eventos criticos recentes
 
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
 
-            rows = conn.execute("""
+            rows = conn.execute(
+                """
                 SELECT * FROM audit_events
                 WHERE severity = 'critical'
                    OR event_type IN ('tool_blocked', 'prompt_blocked', 'auth_failure')
                 ORDER BY timestamp DESC
                 LIMIT 100
-            """)
+            """
+            )
 
             return [self._row_to_event(row) for row in rows]
 
@@ -540,10 +581,13 @@ class AuditLogger:
 
         with self._lock:
             with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.execute("""
+                cursor = conn.execute(
+                    """
                     DELETE FROM audit_events
                     WHERE timestamp < ?
-                """, (cutoff,))
+                """,
+                    (cutoff,),
+                )
                 conn.commit()
                 return cursor.rowcount
 
@@ -694,7 +738,9 @@ if __name__ == "__main__":
     print("\n--- Alertas de Seguranca ---")
     alerts = audit.get_security_alerts()
     for alert in alerts:
-        print(f"  [{alert.severity.value}] {alert.event_type.value}: {alert.blocked_reason or 'N/A'}")
+        print(
+            f"  [{alert.severity.value}] {alert.event_type.value}: {alert.blocked_reason or 'N/A'}"
+        )
 
     # Cleanup
     Path(test_db).unlink()

@@ -4,27 +4,28 @@
 # Controle de acesso baseado em roles e tags para filtragem de documentos
 # =============================================================================
 
+import json
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
-import json
 
 from .logger import logger
 
 
 class Role(str, Enum):
     """Roles padrão do sistema."""
-    ADMIN = "admin"           # Acesso total
-    ANALYST = "analyst"       # Leitura geral
-    VIEWER = "viewer"         # Apenas documentos públicos
-    AUDITOR = "auditor"       # Leitura + logs
+
+    ADMIN = "admin"  # Acesso total
+    ANALYST = "analyst"  # Leitura geral
+    VIEWER = "viewer"  # Apenas documentos públicos
+    AUDITOR = "auditor"  # Leitura + logs
 
 
 @dataclass
 class User:
     """Usuário com roles e tags de acesso."""
 
-    id: str                              # user_id ou email
+    id: str  # user_id ou email
     roles: list[Role] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)  # Ex: ["ti:read", "rh:admin"]
     areas: list[str] = field(default_factory=list)  # Ex: ["TI", "RH"]
@@ -115,14 +116,25 @@ class RBACFilter:
         """Verifica se usuário pode acessar documento baseado nos metadados."""
         # Admin pode tudo
         if self.user.has_role(Role.ADMIN):
-            logger.log_rbac(self.user.id, "read", f"doc:{doc_metadata.get('id')}", True, reason="admin")
+            logger.log_rbac(
+                self.user.id,
+                "read",
+                f"doc:{doc_metadata.get('id')}",
+                True,
+                reason="admin",
+            )
             return True
 
         # Verificar classificação
         classification = doc_metadata.get("classification", "internal")
         if not self.can_access_classification(classification):
-            logger.log_rbac(self.user.id, "read", f"doc:{doc_metadata.get('id')}", False,
-                          reason=f"classification:{classification}")
+            logger.log_rbac(
+                self.user.id,
+                "read",
+                f"doc:{doc_metadata.get('id')}",
+                False,
+                reason=f"classification:{classification}",
+            )
             return False
 
         # Verificar owner_area
@@ -131,8 +143,13 @@ class RBACFilter:
             # Verificar se tem tags que permitem acesso
             rbac_tags = doc_metadata.get("rbac_tags", [])
             if not any(self.user.has_tag(tag) for tag in rbac_tags):
-                logger.log_rbac(self.user.id, "read", f"doc:{doc_metadata.get('id')}", False,
-                              reason=f"area:{owner_area}")
+                logger.log_rbac(
+                    self.user.id,
+                    "read",
+                    f"doc:{doc_metadata.get('id')}",
+                    False,
+                    reason=f"area:{owner_area}",
+                )
                 return False
 
         logger.log_rbac(self.user.id, "read", f"doc:{doc_metadata.get('id')}", True)
@@ -162,10 +179,12 @@ class RBACFilter:
         # Filtro por área (se usuário tem áreas definidas)
         if self.user.areas and "*" not in self.user.areas:
             area_placeholders = ", ".join(["?" for _ in self.user.areas])
-            conditions.append(f"""
+            conditions.append(
+                f"""
                 (json_extract(metadata_json, '$.owner_area') IS NULL
                  OR json_extract(metadata_json, '$.owner_area') IN ({area_placeholders}))
-            """)
+            """
+            )
             params.extend(self.user.areas)
 
         if conditions:
@@ -234,14 +253,9 @@ if __name__ == "__main__":
         id="analyst@empresa.com",
         roles=[Role.ANALYST],
         tags=["ti:read", "compliance:read"],
-        areas=["TI", "Compliance"]
+        areas=["TI", "Compliance"],
     )
-    viewer = User(
-        id="viewer@empresa.com",
-        roles=[Role.VIEWER],
-        tags=[],
-        areas=[]
-    )
+    viewer = User(id="viewer@empresa.com", roles=[Role.VIEWER], tags=[], areas=[])
 
     # Documento de teste
     doc_metadata = {

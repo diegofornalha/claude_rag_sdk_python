@@ -8,9 +8,9 @@ import json
 import logging
 import sys
 import uuid
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from typing import Any, Optional
-from contextvars import ContextVar
 
 # Context var para rastrear conversation_id entre chamadas
 conversation_id_var: ContextVar[str] = ContextVar("conversation_id", default="")

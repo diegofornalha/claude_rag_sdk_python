@@ -4,8 +4,8 @@
 # Implementa sliding window rate limiting para proteger contra abuso
 # =============================================================================
 
-import time
 import threading
+import time
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Optional
@@ -14,6 +14,7 @@ from typing import Optional
 @dataclass
 class RateLimitConfig:
     """Configuração de rate limiting."""
+
     requests_per_minute: int = 60
     requests_per_hour: int = 1000
     burst_size: int = 10  # Requisições permitidas em burst
@@ -22,6 +23,7 @@ class RateLimitConfig:
 @dataclass
 class RateLimitResult:
     """Resultado da verificação de rate limit."""
+
     allowed: bool
     remaining: int
     reset_at: float  # Unix timestamp
@@ -194,7 +196,8 @@ class TokenBucketRateLimiter:
                 return RateLimitResult(
                     allowed=True,
                     remaining=int(current_tokens - tokens_required),
-                    reset_at=time.time() + (self.capacity - current_tokens + tokens_required) / self.rate,
+                    reset_at=time.time()
+                    + (self.capacity - current_tokens + tokens_required) / self.rate,
                 )
             else:
                 # Calcular tempo até ter tokens suficientes
@@ -237,12 +240,14 @@ SLOWAPI_AVAILABLE = False
 try:
     from slowapi import Limiter
     from slowapi.util import get_remote_address
+
     SLOWAPI_AVAILABLE = True
 
     _slowapi_limiter = Limiter(key_func=get_remote_address)
 
     def get_limiter():
         return _slowapi_limiter
+
 except ImportError:
     SLOWAPI_AVAILABLE = False
     print("[WARN] slowapi not available - rate limiting disabled")
@@ -275,16 +280,18 @@ if __name__ == "__main__":
     print("=== Teste de Rate Limiter ===\n")
 
     # Teste sliding window
-    limiter = SlidingWindowRateLimiter(RateLimitConfig(
-        requests_per_minute=5,
-        requests_per_hour=100,
-    ))
+    limiter = SlidingWindowRateLimiter(
+        RateLimitConfig(
+            requests_per_minute=5,
+            requests_per_hour=100,
+        )
+    )
 
     print("--- Sliding Window ---")
     for i in range(8):
         result = limiter.check("user123")
         status = "✓" if result.allowed else "✗"
-        print(f"  Request {i+1}: {status} (remaining: {result.remaining})")
+        print(f"  Request {i + 1}: {status} (remaining: {result.remaining})")
         if not result.allowed:
             print(f"    Retry after: {result.retry_after}s")
 
@@ -297,6 +304,6 @@ if __name__ == "__main__":
     for i in range(8):
         result = bucket.check("api_key_abc")
         status = "✓" if result.allowed else "✗"
-        print(f"  Request {i+1}: {status} (remaining: {result.remaining})")
+        print(f"  Request {i + 1}: {status} (remaining: {result.remaining})")
         if not result.allowed:
             print(f"    Retry after: {result.retry_after}s")

@@ -4,18 +4,23 @@
 # Configuração de CORS restritivo e headers de segurança para produção
 # =============================================================================
 
+import re
 from dataclasses import dataclass, field
 from typing import Optional
-import re
 
 
 @dataclass
 class CORSConfig:
     """Configuração de CORS."""
+
     allowed_origins: list[str] = field(default_factory=lambda: ["http://localhost:3000"])
     allowed_methods: list[str] = field(default_factory=lambda: ["GET", "POST", "OPTIONS"])
-    allowed_headers: list[str] = field(default_factory=lambda: ["Content-Type", "Authorization", "X-Request-ID"])
-    expose_headers: list[str] = field(default_factory=lambda: ["X-Request-ID", "X-RateLimit-Remaining"])
+    allowed_headers: list[str] = field(
+        default_factory=lambda: ["Content-Type", "Authorization", "X-Request-ID"]
+    )
+    expose_headers: list[str] = field(
+        default_factory=lambda: ["X-Request-ID", "X-RateLimit-Remaining"]
+    )
     allow_credentials: bool = False
     max_age: int = 86400  # 24 horas
 
@@ -136,7 +141,12 @@ def get_security_headers(include_hsts: bool = False) -> dict[str, str]:
 
 # Configurações predefinidas
 CORS_DEVELOPMENT = CORSConfig(
-    allowed_origins=["http://localhost:*", "http://127.0.0.1:*", "http://localhost:3000", "http://localhost:8001"],
+    allowed_origins=[
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "http://localhost:3000",
+        "http://localhost:8001",
+    ],
     allow_credentials=True,
 )
 
@@ -148,6 +158,7 @@ CORS_PRODUCTION = CORSConfig(
 
 # Configuração ativa baseada em ambiente
 import os
+
 _env = os.getenv("ENVIRONMENT", "development")
 SECURITY_CONFIG = CORS_DEVELOPMENT if _env == "development" else CORS_PRODUCTION
 

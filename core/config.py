@@ -7,12 +7,13 @@
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 from pathlib import Path
+from typing import Optional
 
 
 class EmbeddingModel(str, Enum):
     """Modelos de embedding disponíveis."""
+
     BGE_SMALL = "BAAI/bge-small-en-v1.5"
     BGE_LARGE = "BAAI/bge-large-en-v1.5"
     BGE_BASE = "BAAI/bge-base-en-v1.5"
@@ -45,6 +46,7 @@ class EmbeddingModel(str, Enum):
 
 class ChunkingStrategy(str, Enum):
     """Estratégias de chunking (re-export from chunker)."""
+
     FIXED_SIZE = "fixed_size"
     SENTENCE = "sentence"
     PARAGRAPH = "paragraph"
@@ -126,35 +128,29 @@ class RAGConfig:
             # Embedding
             embedding_model=embedding_model,
             embedding_dimensions=embedding_model.dimensions,
-
             # Database
             db_path=db_path,
-
             # Chunking
             chunking_strategy=chunking_strategy,
             chunk_size=int(os.getenv("CHUNK_SIZE", "500")),
             chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "50")),
             min_chunk_size=int(os.getenv("MIN_CHUNK_SIZE", "100")),
-
             # Search
             default_top_k=int(os.getenv("DEFAULT_TOP_K", "5")),
             fetch_k_multiplier=float(os.getenv("FETCH_K_MULTIPLIER", "2.0")),
             vector_weight=float(os.getenv("VECTOR_WEIGHT", "0.7")),
             bm25_weight=float(os.getenv("BM25_WEIGHT", "0.3")),
-
             # Adaptive Top-K
             adaptive_topk_enabled=os.getenv("ADAPTIVE_TOPK_ENABLED", "true").lower() == "true",
             high_confidence_threshold=float(os.getenv("HIGH_CONFIDENCE_THRESHOLD", "0.7")),
             low_confidence_threshold=float(os.getenv("LOW_CONFIDENCE_THRESHOLD", "0.5")),
             high_confidence_k=int(os.getenv("HIGH_CONFIDENCE_K", "2")),
             low_confidence_multiplier=float(os.getenv("LOW_CONFIDENCE_MULTIPLIER", "1.5")),
-
             # Cache
             embedding_cache_size=int(os.getenv("EMBEDDING_CACHE_SIZE", "10000")),
             embedding_cache_ttl=int(os.getenv("EMBEDDING_CACHE_TTL", "3600")),
             response_cache_size=int(os.getenv("RESPONSE_CACHE_SIZE", "1000")),
             response_cache_ttl=int(os.getenv("RESPONSE_CACHE_TTL", "300")),
-
             # Performance
             max_concurrent_embeddings=int(os.getenv("MAX_CONCURRENT_EMBEDDINGS", "10")),
         )
