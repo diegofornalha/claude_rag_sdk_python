@@ -284,12 +284,12 @@ else:
             _env_path.touch(exist_ok=True)
             set_key(str(_env_path), "RAG_API_KEY", _api_key)
             print(f"[AUTH] Nova API Key gerada e salva em .env")
-            print(f"[AUTH] RAG_API_KEY={_api_key}")
+            print(f"[AUTH] RAG_API_KEY={_api_key[:12]}...")  # Apenas preview
         except Exception as e:
             print(f"[AUTH] Aviso: Nao foi possivel salvar no .env: {e}")
-            print(f"[AUTH] API Key temporaria: {_api_key}")
+            print(f"[AUTH] API Key temporaria: {_api_key[:12]}...")  # Apenas preview
     else:
-        print(f"[AUTH] API Key temporaria (instale python-dotenv para persistir): {_api_key}")
+        print(f"[AUTH] API Key temporaria (instale python-dotenv para persistir): {_api_key[:12]}...")  # Apenas preview
 
 
 def is_auth_enabled() -> bool:
