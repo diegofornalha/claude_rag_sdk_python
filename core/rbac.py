@@ -217,8 +217,9 @@ def parse_user_from_header(auth_header: Optional[str]) -> User:
         decoded = base64.b64decode(token).decode("utf-8")
         data = json.loads(decoded)
         return User.from_dict(data)
-    except (ValueError, KeyError, json.JSONDecodeError) as e:
+    except (ValueError, KeyError, json.JSONDecodeError, Exception) as e:
         # Log auth failures for security auditing
+        # Note: base64.b64decode can raise binascii.Error (not a ValueError subclass)
         print(f"[SECURITY] Auth token parse failed: {type(e).__name__}")
         return User.anonymous()
 
