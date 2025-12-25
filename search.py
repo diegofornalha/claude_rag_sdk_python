@@ -107,6 +107,7 @@ class SearchEngine:
     def _get_connection(self) -> apsw.Connection:
         """Create connection with sqlite-vec loaded."""
         conn = apsw.Connection(str(self.db_path))
+        conn.setbusytimeout(5000)  # 5 second timeout for locked DB
         conn.enableloadextension(True)
         conn.loadextension(sqlite_vec.loadable_path())
         conn.enableloadextension(False)
