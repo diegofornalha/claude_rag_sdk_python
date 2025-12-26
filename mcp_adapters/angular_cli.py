@@ -12,7 +12,7 @@ O sistema continuará funcionando normalmente.
 Tools disponíveis do Angular CLI MCP:
 - search_documentation: Busca na documentação oficial do Angular
 - find_examples: Encontra exemplos de código curados
-- get_beices: Retorna o Angular Best Practices Guide
+- get_best_practices: Retorna o Angular Best Practices Guide
 - list_projects: Lista projetos no workspace Angular
 - ai_tutor: Tutor interativo de Angular
 - onpush_zoneless_migration: Análise para migração zoneless
@@ -182,24 +182,82 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
             logger.warning(f"No results for query: {query}")
             return []
 
-        # Processa resultado
-        content = result.data if isinstance(result.data, str) else str(result.data)
+        # MCP retorna estrutura: {results: [...], top_result_content: "..."}
+        data = result.data
+        documents: List[MCPDocument] = []
 
-        return [
-            MCPDocument(
-                content=content,
-                title=f"Angular Docs: {query}",
-                source=f"angular-cli-mcp:search_documentation:{query}",
-                doc_type="markdown",
-                url="https://angular.dev",
-                metadata={
-                    "query": query,
-                    "tool": "search_documentation",
-                    "mcp_server": self.name,
-                    "fetched_at": datetime.now().isoformat(),
-                },
+        # Extrai dados estruturados se disponíveis
+        if isinstance(data, dict):
+            results_list = data.get("results", [])
+            top_content = data.get("top_result_content", "")
+
+            # Se temos resultado principal, cria documento com metadados ricos
+            if top_content and results_list:
+                top_result = results_list[0] if results_list else {}
+                title = top_result.get("title", f"Angular Docs: {query}")
+                url = top_result.get("url", "https://angular.dev")
+                breadcrumbs = top_result.get("breadcrumbs", "")
+
+                # Formata conteúdo com header informativo
+                formatted_content = f"# {title}\n\n"
+                if breadcrumbs:
+                    formatted_content += f"_Seção: {breadcrumbs}_\n\n"
+                formatted_content += top_content
+
+                documents.append(
+                    MCPDocument(
+                        content=formatted_content,
+                        title=title,
+                        source=f"angular-cli-mcp:search_documentation:{query}",
+                        doc_type="markdown",
+                        url=url,
+                        metadata={
+                            "query": query,
+                            "tool": "search_documentation",
+                            "mcp_server": self.name,
+                            "breadcrumbs": breadcrumbs,
+                            "related_results": len(results_list),
+                            "fetched_at": datetime.now().isoformat(),
+                        },
+                    )
+                )
+            elif top_content:
+                # Só conteúdo sem metadados
+                documents.append(
+                    MCPDocument(
+                        content=top_content,
+                        title=f"Angular Docs: {query}",
+                        source=f"angular-cli-mcp:search_documentation:{query}",
+                        doc_type="markdown",
+                        url="https://angular.dev",
+                        metadata={
+                            "query": query,
+                            "tool": "search_documentation",
+                            "mcp_server": self.name,
+                            "fetched_at": datetime.now().isoformat(),
+                        },
+                    )
+                )
+        else:
+            # Fallback para string simples
+            content = data if isinstance(data, str) else str(data)
+            documents.append(
+                MCPDocument(
+                    content=content,
+                    title=f"Angular Docs: {query}",
+                    source=f"angular-cli-mcp:search_documentation:{query}",
+                    doc_type="markdown",
+                    url="https://angular.dev",
+                    metadata={
+                        "query": query,
+                        "tool": "search_documentation",
+                        "mcp_server": self.name,
+                        "fetched_at": datetime.now().isoformat(),
+                    },
+                )
             )
-        ]
+
+        return documents
 
     async def get_examples(self, topic: str) -> List[MCPDocument]:
         """
@@ -241,7 +299,7 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
         Returns:
             Lista com documento de best practices
         """
-        result = await self.call_tool("get_beices", {})
+        result = await self.call_tool("get_best_practices", {})
 
         if not result.success or not result.data:
             logger.warning("Failed to get best practices")
@@ -253,10 +311,10 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
             MCPDocument(
                 content=content,
                 title="Angular Best Practices Guide",
-                source="angular-cli-mcp:get_beices",
+                source="angular-cli-mcp:get_best_practices",
                 doc_type="markdown",
                 metadata={
-                    "tool": "get_beices",
+                    "tool": "get_best_practices",
                     "mcp_server": self.name,
                     "fetched_at": datetime.now().isoformat(),
                 },
