@@ -694,6 +694,22 @@ async def standalone_post_tool_use(
     return await manager.post_tool_use(input_data, tool_use_id, context)
 
 
+class HookMatcherObject:
+    """
+    Object-based HookMatcher for Claude Agent SDK.
+
+    The SDK uses hasattr() and attribute access (matcher.hooks),
+    not dict access (matcher["hooks"]), so we need an object.
+    """
+
+    def __init__(
+        self, hooks: list, matcher: Optional[str] = None, timeout: Optional[float] = None
+    ):
+        self.hooks = hooks
+        self.matcher = matcher
+        self.timeout = timeout
+
+
 def get_sdk_hooks_config() -> dict:
     """
     Retorna configuração de hooks para ClaudeAgentOptions.
@@ -709,18 +725,14 @@ def get_sdk_hooks_config() -> dict:
 
     Formato oficial do Claude Agent SDK:
         - Chaves em PascalCase: PreToolUse, PostToolUse
-        - Valor: lista de dicts com 'hooks' (lista de funções async)
+        - Valor: lista de HookMatcherObject com atributos .hooks, .matcher, .timeout
     """
     return {
         "PreToolUse": [
-            {
-                "hooks": [standalone_pre_tool_use],
-            }
+            HookMatcherObject(hooks=[standalone_pre_tool_use]),
         ],
         "PostToolUse": [
-            {
-                "hooks": [standalone_post_tool_use],
-            }
+            HookMatcherObject(hooks=[standalone_post_tool_use]),
         ],
     }
 
