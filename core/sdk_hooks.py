@@ -702,9 +702,7 @@ class HookMatcherObject:
     not dict access (matcher["hooks"]), so we need an object.
     """
 
-    def __init__(
-        self, hooks: list, matcher: Optional[str] = None, timeout: Optional[float] = None
-    ):
+    def __init__(self, hooks: list, matcher: Optional[str] = None, timeout: Optional[float] = None):
         self.hooks = hooks
         self.matcher = matcher
         self.timeout = timeout
