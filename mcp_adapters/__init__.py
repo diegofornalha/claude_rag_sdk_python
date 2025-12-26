@@ -30,7 +30,7 @@ _available_adapters: List[str] = []
 def _try_register_angular_cli():
     """Tenta registrar o adapter Angular CLI."""
     try:
-        from . import angular_cli
+        from . import angular_cli  # noqa: F401
 
         _available_adapters.append("angular-cli")
     except ImportError:

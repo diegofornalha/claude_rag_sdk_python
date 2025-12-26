@@ -8,12 +8,12 @@ O registry é responsável por:
 - Prover acesso aos adapters de forma segura
 """
 
+import asyncio
 import logging
 from typing import Dict, List, Optional, Type
-import asyncio
 
 from .base import BaseMCPAdapter, MCPAdapterInfo, MCPAdapterStatus
-from .config import get_mcp_config, MCPConfig
+from .config import MCPConfig, get_mcp_config
 
 logger = logging.getLogger(__name__)
 

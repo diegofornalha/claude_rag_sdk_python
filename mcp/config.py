@@ -6,11 +6,11 @@ Para desativar um adapter, basta definir enabled=False.
 Para remover completamente, basta não registrar o adapter.
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Any
-from pathlib import Path
 import json
 import os
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 @dataclass

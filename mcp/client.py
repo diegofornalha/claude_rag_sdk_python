@@ -7,13 +7,13 @@ Implementa o protocolo JSON-RPC 2.0 sobre stdio.
 
 import asyncio
 import json
+import logging
 import subprocess
 import time
-from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
-import logging
+from typing import Any, Dict, List, Optional
 
-from .base import MCPToolResult, MCPAdapterStatus
+from .base import MCPAdapterStatus, MCPToolResult
 
 logger = logging.getLogger(__name__)
 
