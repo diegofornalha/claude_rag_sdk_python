@@ -2,10 +2,11 @@
 # CONFIG - Configuração Centralizada do RAG Agent
 # =============================================================================
 # Gerencia modelos de embedding, chunking e outros parâmetros
+# Fonte única de verdade para configurações do sistema
 # =============================================================================
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Optional
@@ -61,7 +62,7 @@ class RAGConfig:
     embedding_model: EmbeddingModel
     embedding_dimensions: int
 
-    # --- Database ---
+    # --- Database (campos sem default) ---
     db_path: Path
 
     # --- Chunking ---
@@ -92,13 +93,37 @@ class RAGConfig:
     # --- Performance ---
     max_concurrent_embeddings: int
 
+    # --- Database (campos com default - devem vir por último) ---
+    db_name: str = "rag_knowledge.db"
+    audit_db_name: str = "audit.db"
+    data_dir: Path = field(default_factory=lambda: Path.cwd() / "data")
+
+    # --- Computed Properties ---
+    @property
+    def rag_db_path(self) -> Path:
+        """Caminho completo do RAG database (fonte única de verdade)."""
+        return self.data_dir / self.db_name
+
+    @property
+    def audit_db_path(self) -> Path:
+        """Caminho completo do audit database."""
+        return Path.cwd() / ".agentfs" / self.audit_db_name
+
+    @property
+    def embedding_model_string(self) -> str:
+        """String do modelo de embedding para uso direto."""
+        return self.embedding_model.value
+
     @classmethod
     def from_env(cls, db_path: Optional[Path] = None) -> "RAGConfig":
         """
         Cria configuração a partir de variáveis de ambiente.
 
         Environment Variables:
-            EMBEDDING_MODEL: Nome do modelo (default: bge-large)
+            EMBEDDING_MODEL: Nome do modelo (default: bge-small)
+            RAG_DATA_DIR: Diretório base para dados (default: ./data)
+            RAG_DB_NAME: Nome do arquivo do banco RAG (default: rag_knowledge.db)
+            AUDIT_DB_NAME: Nome do arquivo do banco de auditoria (default: audit.db)
             CHUNKING_STRATEGY: Estratégia de chunking (default: semantic)
             CHUNK_SIZE: Tamanho do chunk em tokens (default: 500)
             CHUNK_OVERLAP: Overlap em tokens (default: 50)
@@ -120,9 +145,14 @@ class RAGConfig:
         chunking_strategy_name = os.getenv("CHUNKING_STRATEGY", "semantic")
         chunking_strategy = ChunkingStrategy(chunking_strategy_name)
 
-        # Database
+        # Database - Configuração centralizada
+        data_dir = Path(os.getenv("RAG_DATA_DIR", str(Path.cwd() / "data")))
+        db_name = os.getenv("RAG_DB_NAME", "rag_knowledge.db")
+        audit_db_name = os.getenv("AUDIT_DB_NAME", "audit.db")
+
+        # db_path mantido para compatibilidade (usado por IngestEngine/SearchEngine)
         if db_path is None:
-            db_path = Path(__file__).parent.parent.parent / "teste" / "documentos.db"
+            db_path = data_dir / db_name
 
         return cls(
             # Embedding
@@ -130,6 +160,9 @@ class RAGConfig:
             embedding_dimensions=embedding_model.dimensions,
             # Database
             db_path=db_path,
+            db_name=db_name,
+            audit_db_name=audit_db_name,
+            data_dir=data_dir,
             # Chunking
             chunking_strategy=chunking_strategy,
             chunk_size=int(os.getenv("CHUNK_SIZE", "500")),
@@ -162,6 +195,11 @@ class RAGConfig:
                 "model": self.embedding_model.value,
                 "short_name": self.embedding_model.short_name,
                 "dimensions": self.embedding_dimensions,
+            },
+            "database": {
+                "rag_db_path": str(self.rag_db_path),
+                "audit_db_path": str(self.audit_db_path),
+                "data_dir": str(self.data_dir),
             },
             "chunking": {
                 "strategy": self.chunking_strategy.value,

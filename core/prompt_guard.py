@@ -29,6 +29,7 @@ class ScanResult:
     threats_detected: list[str]
     sanitized_input: Optional[str] = None
     blocked_reason: Optional[str] = None
+    message: Optional[str] = None
 
 
 class PromptGuard:

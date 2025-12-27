@@ -253,11 +253,18 @@ except ImportError:
     print("[WARN] slowapi not available - rate limiting disabled")
 
 
-# Rate limits padrão para endpoints
+# Export limiter para uso nos routers
+limiter = get_limiter()
+
+# Rate limits configuráveis via ambiente
+import os
+
 RATE_LIMITS = {
-    "chat": "30/minute",
-    "chat_stream": "20/minute",
-    "default": "60/minute",
+    "chat": os.getenv("RATE_LIMIT_CHAT", "30/minute"),
+    "chat_stream": os.getenv("RATE_LIMIT_CHAT_STREAM", "20/minute"),
+    "search": os.getenv("RATE_LIMIT_SEARCH", "60/minute"),
+    "ingest": os.getenv("RATE_LIMIT_INGEST", "10/minute"),
+    "default": os.getenv("RATE_LIMIT_DEFAULT", "60/minute"),
 }
 
 

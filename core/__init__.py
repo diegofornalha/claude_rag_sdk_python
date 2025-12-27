@@ -16,8 +16,44 @@ from .circuit_breaker import (
     circuit_breaker,
     get_or_create_circuit_breaker,
 )
+from .config import EmbeddingModel, ChunkingStrategy, RAGConfig, get_config, reload_config
+from .database import ConnectionPool, get_rag_pool, get_audit_pool, reset_pools
+from .exceptions import (
+    RAGException,
+    DatabaseError,
+    DatabaseConnectionError,
+    DatabaseNotFoundError,
+    EmbeddingError,
+    SearchError,
+    SearchTimeoutError,
+    IngestError,
+    IngestFileError,
+    AuthenticationError,
+    InvalidAPIKeyError,
+    ValidationError,
+    InvalidInputError,
+    InvalidSessionIdError,
+    RateLimitError,
+    SessionError,
+    SessionNotFoundError,
+    LLMError,
+    LLMTimeoutError,
+    SecurityError,
+    PromptInjectionError,
+    PathTraversalError,
+    MCPError,
+    raise_for_status,
+)
 from .hybrid_search import BM25, HybridSearch, SearchResult
-from .logger import get_conversation_id, get_request_id, logger, set_conversation_id, set_request_id
+from .logger import (
+    get_conversation_id,
+    get_logger,
+    get_request_id,
+    logger,
+    set_conversation_id,
+    set_request_id,
+)
+from .messages import LogTag, Messages, log_msg
 from .prompt_guard import (
     PromptGuard,
     ScanResult,
@@ -38,12 +74,53 @@ from .reranker import CrossEncoderReranker, LightweightReranker, RerankResult, c
 from .security import CORSConfig, CORSMiddleware, SecurityHeaders, get_security_headers
 
 __all__ = [
+    # Config
+    "EmbeddingModel",
+    "ChunkingStrategy",
+    "RAGConfig",
+    "get_config",
+    "reload_config",
+    # Database
+    "ConnectionPool",
+    "get_rag_pool",
+    "get_audit_pool",
+    "reset_pools",
+    # Exceptions
+    "RAGException",
+    "DatabaseError",
+    "DatabaseConnectionError",
+    "DatabaseNotFoundError",
+    "EmbeddingError",
+    "SearchError",
+    "SearchTimeoutError",
+    "IngestError",
+    "IngestFileError",
+    "AuthenticationError",
+    "InvalidAPIKeyError",
+    "ValidationError",
+    "InvalidInputError",
+    "InvalidSessionIdError",
+    "RateLimitError",
+    "SessionError",
+    "SessionNotFoundError",
+    "LLMError",
+    "LLMTimeoutError",
+    "SecurityError",
+    "PromptInjectionError",
+    "PathTraversalError",
+    "MCPError",
+    "raise_for_status",
     # Logger
     "logger",
+    "get_logger",
     "set_conversation_id",
     "set_request_id",
     "get_conversation_id",
     "get_request_id",
+    # Messages
+    "LogTag",
+    "Messages",
+    "log_msg",
     # RBAC
     "User",
     "Role",

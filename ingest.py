@@ -193,8 +193,8 @@ class IngestEngine:
 
         sentences = re.split(r"(?<=[.!?])\s+", text)
 
-        chunks = []
-        current_chunk = []
+        chunks: list[str] = []
+        current_chunk: list[str] = []
         current_size = 0
 
         for sentence in sentences:
@@ -218,8 +218,8 @@ class IngestEngine:
         """Paragraph-based chunking."""
         paragraphs = text.split("\n\n")
 
-        chunks = []
-        current_chunk = []
+        chunks: list[str] = []
+        current_chunk: list[str] = []
         current_size = 0
 
         for para in paragraphs:
@@ -482,7 +482,8 @@ class IngestEngine:
             cursor = conn.cursor()
 
             cursor.execute("SELECT COUNT(*) FROM documentos")
-            count = cursor.fetchone()[0]
+            result = cursor.fetchone()
+            count: int = result[0] if result else 0
 
             cursor.execute("DELETE FROM vec_documentos")
             cursor.execute("DELETE FROM documentos")

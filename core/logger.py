@@ -231,6 +231,53 @@ def get_session_id() -> str:
     return session_id_var.get() or "default"
 
 
+# Formatador para console em desenvolvimento
+class ConsoleFormatter(logging.Formatter):
+    """Formatter para console com cores e formatação legível."""
+
+    COLORS = {
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
+    }
+    RESET = "\033[0m"
+
+    def format(self, record: logging.LogRecord) -> str:
+        color = self.COLORS.get(record.levelname, self.RESET)
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        level = f"{color}[{record.levelname}]{self.RESET}"
+        message = record.getMessage()
+
+        # Formato: [HH:MM:SS] [LEVEL] message
+        formatted = f"[{timestamp}] {level} {message}"
+
+        # Adicionar campos extras se existirem
+        if hasattr(record, "extra_fields") and record.extra_fields:
+            formatted += f" | {record.extra_fields}"
+
+        return formatted
+
+
+# Cache de loggers por nome
+_loggers: dict[str, RAGLogger] = {}
+
+
+def get_logger(name: str = "rag-agent") -> RAGLogger:
+    """Obtém um logger estruturado (singleton por nome).
+
+    Args:
+        name: Nome do logger (default: rag-agent)
+
+    Returns:
+        RAGLogger configurado
+    """
+    if name not in _loggers:
+        _loggers[name] = RAGLogger(name)
+    return _loggers[name]
+
+
 # Instância global
 logger = RAGLogger()
 

@@ -175,7 +175,7 @@ class LightweightReranker:
             term_coverage = (matched_terms / max(len(query_terms), 1)) * self.term_coverage_weight
 
             # 3. Posição dos termos (termos no início = mais relevante)
-            position_score = 0
+            position_score: float = 0.0
             for term in query_terms:
                 pos = content_lower.find(term)
                 if pos >= 0:
@@ -273,8 +273,8 @@ if __name__ == "__main__":
 
     # Testar cross-encoder (se disponível)
     print("\n--- Cross-Encoder Reranker ---")
-    reranker = CrossEncoderReranker()
-    results = reranker.rerank(query, documents, top_k=3)
+    cross_reranker = CrossEncoderReranker()
+    results = cross_reranker.rerank(query, documents, top_k=3)
 
     for r in results:
         print(

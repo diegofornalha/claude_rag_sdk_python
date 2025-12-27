@@ -265,7 +265,9 @@ class MCPClient:
 
         return json.loads(response_line)
 
-    async def _send_notification(self, method: str, params: Dict[str, Any] = None) -> None:
+    async def _send_notification(
+        self, method: str, params: Optional[Dict[str, Any]] = None
+    ) -> None:
         """Envia uma notificação (sem esperar resposta)."""
         if not self._process or not self._process.stdin:
             return

@@ -265,7 +265,7 @@ try:
     _DOTENV_AVAILABLE = True
 except ImportError:
     _DOTENV_AVAILABLE = False
-    _env_path = None
+    _env_path: Optional[Path] = None
 
 # Chaves válidas
 VALID_API_KEYS: set[str] = set()

@@ -1,12 +1,17 @@
 """Search engine for ClaudeRAG SDK - Semantic and Hybrid search."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import apsw
 import sqlite_vec
 from fastembed import TextEmbedding
+
+if TYPE_CHECKING:
+    from .core.prompt_guard import PromptGuard
 
 
 @dataclass
@@ -95,8 +100,8 @@ class SearchEngine:
         # Lazy load
         self._model: Optional[TextEmbedding] = None
         self._embedding_cache: dict[str, list[float]] = {}
-        self._reranker = None
-        self._prompt_guard = None
+        self._reranker: Any = None
+        self._prompt_guard: Optional[PromptGuard] = None
 
     @property
     def model(self) -> TextEmbedding:
