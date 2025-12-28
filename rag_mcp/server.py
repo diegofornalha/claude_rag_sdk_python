@@ -231,12 +231,12 @@ async def create_file(path: str, content: str) -> dict:
         if session_id and session_id != "default":
             # Get backend directory (assuming it's 3 levels up from this file)
             backend_dir = Path(__file__).parent.parent.parent
-            outputs_dir = backend_dir / "outputs" / session_id
-            outputs_dir.mkdir(parents=True, exist_ok=True)
+            artifacts_dir = backend_dir / "artifacts" / session_id
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
 
             # Extract filename from path (remove leading / if present)
             filename = path.lstrip("/")
-            physical_file = outputs_dir / filename
+            physical_file = artifacts_dir / filename
             physical_file.write_text(content, encoding="utf-8")
 
         return {

@@ -9,6 +9,8 @@
 # =============================================================================
 
 import json
+import os
+import re
 import sqlite3
 import threading
 import time
@@ -337,34 +339,160 @@ class RateLimitManager:
 # =============================================================================
 
 
+# =============================================================================
+# 5.1 PATH VALIDATOR - Validação de caminhos para segurança
+# =============================================================================
+
+
+class PathValidator:
+    """Valida caminhos para garantir que estão dentro do diretório permitido.
+
+    Previne:
+    - Escrita fora de artifacts/{session_id}/
+    - Path traversal (../)
+    - Acesso a diretórios sensíveis
+    """
+
+    # Padrões de path perigosos em comandos bash
+    DANGEROUS_BASH_PATTERNS = [
+        r">\s*/",  # Redirect para path absoluto
+        r">>\s*/",  # Append para path absoluto
+        r"tee\s+/",  # tee para path absoluto
+        r"mv\s+.*\s+/",  # mv para path absoluto
+        r"cp\s+.*\s+/",  # cp para path absoluto
+        r"cat\s+.*>\s*/",  # cat redirect
+        r"echo\s+.*>\s*/",  # echo redirect
+        r"\.\./",  # Path traversal
+        r"/etc/",  # Diretório sensível
+        r"/var/",  # Diretório sensível
+        r"/usr/",  # Diretório sensível
+        r"/home/",  # Diretório sensível (fora do projeto)
+        r"/root/",  # Diretório sensível
+        r"/tmp/(?!artifacts)",  # /tmp exceto /tmp/artifacts
+    ]
+
+    def __init__(self, base_path: Optional[Path] = None):
+        """Inicializa o validador.
+
+        Args:
+            base_path: Diretório base permitido (default: cwd/artifacts)
+        """
+        self.base_path = base_path or (Path.cwd() / "artifacts")
+        self._dangerous_patterns = [
+            re.compile(p, re.IGNORECASE) for p in self.DANGEROUS_BASH_PATTERNS
+        ]
+
+    def is_safe_path(self, file_path: str, session_id: Optional[str] = None) -> tuple[bool, str]:
+        """Verifica se um caminho é seguro para escrita.
+
+        Args:
+            file_path: Caminho a validar
+            session_id: ID da sessão atual (se disponível)
+
+        Returns:
+            Tuple (is_safe, reason)
+        """
+        if not file_path:
+            return False, "Caminho vazio"
+
+        # Normalizar path
+        normalized = file_path.replace("\\", "/")
+
+        # Verificar path traversal
+        if ".." in normalized:
+            return False, "Path traversal detectado (../)"
+
+        # Se é path absoluto, verificar se está dentro do base_path
+        if normalized.startswith("/"):
+            try:
+                resolved = Path(normalized).resolve()
+                base_resolved = self.base_path.resolve()
+
+                if not str(resolved).startswith(str(base_resolved)):
+                    return False, f"Caminho fora do diretório permitido: {self.base_path}"
+
+                # Se temos session_id, verificar se está na pasta correta
+                if session_id:
+                    session_path = (base_resolved / session_id).resolve()
+                    if not str(resolved).startswith(str(session_path)):
+                        return False, f"Caminho fora da sessão permitida: {session_id}"
+
+            except (ValueError, OSError) as e:
+                return False, f"Caminho inválido: {e}"
+
+        # Path relativo - verificar se não tenta escapar
+        else:
+            # Verificar se começa com artifacts/ ou está dentro do esperado
+            if normalized.startswith("artifacts/") or normalized.startswith("./artifacts/"):
+                pass  # OK
+            elif "/" not in normalized:
+                pass  # Arquivo simples no cwd - OK
+            else:
+                # Verificar se é path para fora
+                parts = normalized.split("/")
+                if any(p.startswith(".") and p != "." for p in parts):
+                    return False, "Tentativa de acesso a diretório oculto"
+
+        return True, "OK"
+
+    def is_safe_bash_command(self, command: str) -> tuple[bool, str]:
+        """Verifica se um comando bash é seguro.
+
+        Args:
+            command: Comando bash a validar
+
+        Returns:
+            Tuple (is_safe, reason)
+        """
+        if not command:
+            return True, "OK"
+
+        # Verificar padrões perigosos
+        for pattern in self._dangerous_patterns:
+            if pattern.search(command):
+                return False, f"Padrão perigoso detectado: {pattern.pattern}"
+
+        return True, "OK"
+
+
 class HooksManager:
     """
     Gerencia os hooks de pré e pós tool execution.
 
-    Integra RBAC, Rate Limiting e Auditoria em um único manager.
+    Integra RBAC, Rate Limiting, Auditoria e Validação de Path em um único manager.
     """
 
     # Tools bloqueadas por segurança (sempre negadas)
     BLOCKED_TOOLS = {"rm", "sudo", "chmod", "chown", "mkfs", "dd", "format", "shutdown", "reboot"}
+
+    # Tools que escrevem arquivos (precisam validação de path)
+    FILE_WRITE_TOOLS = {"Write", "Edit", "write_file", "edit_file", "create_file"}
 
     def __init__(
         self,
         rbac: Optional[RBACManager] = None,
         rate_limiter: Optional[RateLimitManager] = None,
         audit_db: Optional[AuditDatabase] = None,
+        path_validator: Optional[PathValidator] = None,
         enable_rbac: bool = False,  # Desativado por padrão (sem autenticação)
         enable_rate_limit: bool = True,
+        enable_path_validation: bool = True,  # Validação de path habilitada por padrão
         max_calls_per_hour: int = 100,
     ):
         self.rbac = rbac or RBACManager()
         self.rate_limiter = rate_limiter or RateLimitManager()
         self.audit_db = audit_db or AuditDatabase()
+        self.path_validator = path_validator or PathValidator()
         self.enable_rbac = enable_rbac
         self.enable_rate_limit = enable_rate_limit
+        self.enable_path_validation = enable_path_validation
         self.max_calls_per_hour = max_calls_per_hour
 
         # Armazenar timestamps para calcular duração
         self._tool_start_times: dict[str, float] = {}
+
+        # Session ID atual (atualizado pelo chat router)
+        self._current_session_id: Optional[str] = None
 
         # Contexto de usuário padrão (quando RBAC desativado)
         self._default_user = UserContext(
@@ -372,6 +500,10 @@ class HooksManager:
             roles=["admin"],  # Acesso total quando RBAC desativado
             tags=["public", "financial", "legal", "sensitive"],
         )
+
+    def set_session_id(self, session_id: str) -> None:
+        """Define o session_id atual para validação de path."""
+        self._current_session_id = session_id
 
     async def pre_tool_use(
         self,
@@ -481,7 +613,73 @@ class HooksManager:
                     }
                 }
 
-        # 4. Registrar tentativa (permitida)
+        # 4. Validar path para tools de escrita de arquivo
+        if self.enable_path_validation and tool_name in self.FILE_WRITE_TOOLS:
+            file_path = None
+            if isinstance(tool_input, dict):
+                file_path = (
+                    tool_input.get("file_path")
+                    or tool_input.get("path")
+                    or tool_input.get("filename")
+                )
+
+            if file_path:
+                is_safe, reason = self.path_validator.is_safe_path(
+                    file_path, session_id=self._current_session_id
+                )
+                if not is_safe:
+                    record = AuditRecord(
+                        event_type=AuditEventType.SECURITY_BLOCKED,
+                        severity=AuditSeverity.WARNING,
+                        user_id=user.user_id,
+                        session_id=session_id,
+                        tool_name=tool_name,
+                        tool_parameters=self._truncate_params(tool_input),
+                        blocked_reason=f"Path validation failed: {reason}",
+                    )
+                    self.audit_db.log_event(record)
+                    print(f"[HOOK:PreToolUse] BLOCKED (path): {tool_name} -> {file_path}: {reason}")
+
+                    return {
+                        "hookSpecificOutput": {
+                            "hookEventName": hook_event_name,
+                            "permissionDecision": "deny",
+                            "permissionDecisionReason": f"Não é permitido escrever neste caminho: {reason}",
+                        }
+                    }
+
+        # 5. Validar comandos bash perigosos
+        if self.enable_path_validation and tool_name.lower() == "bash":
+            command = None
+            if isinstance(tool_input, dict):
+                command = tool_input.get("command") or tool_input.get("cmd")
+            elif isinstance(tool_input, str):
+                command = tool_input
+
+            if command:
+                is_safe, reason = self.path_validator.is_safe_bash_command(command)
+                if not is_safe:
+                    record = AuditRecord(
+                        event_type=AuditEventType.SECURITY_BLOCKED,
+                        severity=AuditSeverity.WARNING,
+                        user_id=user.user_id,
+                        session_id=session_id,
+                        tool_name=tool_name,
+                        tool_parameters=self._truncate_params(tool_input),
+                        blocked_reason=f"Bash command blocked: {reason}",
+                    )
+                    self.audit_db.log_event(record)
+                    print(f"[HOOK:PreToolUse] BLOCKED (bash): {command[:50]}... : {reason}")
+
+                    return {
+                        "hookSpecificOutput": {
+                            "hookEventName": hook_event_name,
+                            "permissionDecision": "deny",
+                            "permissionDecisionReason": f"Comando não permitido: {reason}",
+                        }
+                    }
+
+        # 6. Registrar tentativa (permitida)
         record = AuditRecord(
             event_type=AuditEventType.TOOL_CALL,
             severity=AuditSeverity.INFO,
@@ -665,6 +863,15 @@ def get_hooks_manager() -> HooksManager:
 def get_audit_database() -> AuditDatabase:
     """Obter instância do AuditDatabase."""
     return get_hooks_manager().audit_db
+
+
+def set_current_session_id(session_id: str) -> None:
+    """Define o session_id atual para validação de path nas tools.
+
+    Chamado pelo chat router antes de processar cada prompt.
+    Isso garante que tools Write/Edit só possam escrever em artifacts/{session_id}/.
+    """
+    get_hooks_manager().set_session_id(session_id)
 
 
 # =============================================================================
