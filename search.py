@@ -200,27 +200,54 @@ class SearchEngine:
             cursor = conn.cursor()
 
             results = []
-            for row in cursor.execute(
-                """
-                SELECT v.doc_id, v.distance, d.nome, d.conteudo, d.tipo
-                FROM vec_documentos v
-                JOIN documentos d ON d.id = v.doc_id
-                WHERE v.embedding MATCH ? AND k = ?
-            """,
-                (query_vec, fetch_k),
-            ):
-                doc_id, distance, nome, conteudo, tipo = row
-                similarity = max(0, 1 - distance)
 
-                results.append(
-                    SearchResult(
-                        doc_id=doc_id,
-                        source=nome,
-                        content=conteudo[:content_max_length] if conteudo else "",
-                        similarity=round(similarity, 4),
-                        doc_type=tipo,
+            # Try to use vec_chunks first (new multi-chunk schema)
+            try:
+                for row in cursor.execute(
+                    """
+                    SELECT c.doc_id, v.distance, d.nome, c.conteudo, d.tipo, c.chunk_index
+                    FROM vec_chunks v
+                    JOIN chunks c ON c.id = v.chunk_id
+                    JOIN documentos d ON d.id = c.doc_id
+                    WHERE v.embedding MATCH ? AND k = ?
+                """,
+                    (query_vec, fetch_k),
+                ):
+                    doc_id, distance, nome, conteudo, tipo, chunk_idx = row
+                    similarity = max(0, 1 - distance)
+
+                    results.append(
+                        SearchResult(
+                            doc_id=doc_id,
+                            source=nome,
+                            content=conteudo[:content_max_length] if conteudo else "",
+                            similarity=round(similarity, 4),
+                            doc_type=tipo,
+                        )
                     )
-                )
+            except Exception:
+                # Fallback to legacy vec_documentos schema
+                for row in cursor.execute(
+                    """
+                    SELECT v.doc_id, v.distance, d.nome, d.conteudo, d.tipo
+                    FROM vec_documentos v
+                    JOIN documentos d ON d.id = v.doc_id
+                    WHERE v.embedding MATCH ? AND k = ?
+                """,
+                    (query_vec, fetch_k),
+                ):
+                    doc_id, distance, nome, conteudo, tipo = row
+                    similarity = max(0, 1 - distance)
+
+                    results.append(
+                        SearchResult(
+                            doc_id=doc_id,
+                            source=nome,
+                            content=conteudo[:content_max_length] if conteudo else "",
+                            similarity=round(similarity, 4),
+                            doc_type=tipo,
+                        )
+                    )
         finally:
             conn.close()
 

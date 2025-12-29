@@ -137,6 +137,20 @@ class IngestEngine:
             """
             )
 
+            # Create chunks table for storing individual chunks
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS chunks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    doc_id INTEGER NOT NULL,
+                    chunk_index INTEGER NOT NULL,
+                    conteudo TEXT NOT NULL,
+                    FOREIGN KEY (doc_id) REFERENCES documentos(id) ON DELETE CASCADE,
+                    UNIQUE(doc_id, chunk_index)
+                )
+            """
+            )
+
             # Get embedding dimensions from model
             # BGE models: small=384, base=768, large=1024
             dims = 384  # default for bge-small
@@ -145,7 +159,17 @@ class IngestEngine:
             elif "large" in self.embedding_model_name:
                 dims = 1024
 
-            # Create vector table
+            # Create vector table for chunks (chunk_id references chunks.id)
+            cursor.execute(
+                f"""
+                CREATE VIRTUAL TABLE IF NOT EXISTS vec_chunks USING vec0(
+                    chunk_id INTEGER PRIMARY KEY,
+                    embedding FLOAT[{dims}]
+                )
+            """
+            )
+
+            # Keep legacy vec_documentos for backward compatibility
             cursor.execute(
                 f"""
                 CREATE VIRTUAL TABLE IF NOT EXISTS vec_documentos USING vec0(
@@ -262,7 +286,23 @@ class IngestEngine:
                 import docx
 
                 doc = docx.Document(str(file_path))
-                text = "\n".join(para.text for para in doc.paragraphs)
+                parts = []
+
+                # Extrair parágrafos
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        parts.append(para.text)
+
+                # Extrair tabelas (conteúdo importante!)
+                for table in doc.tables:
+                    for row in table.rows:
+                        row_text = " | ".join(
+                            cell.text.strip() for cell in row.cells if cell.text.strip()
+                        )
+                        if row_text:
+                            parts.append(row_text)
+
+                text = "\n".join(parts)
                 return text, "docx"
             except ImportError as e:
                 raise ImportError(
@@ -401,12 +441,34 @@ class IngestEngine:
             chunks = self._chunk_text(content)
             embeddings = list(self.model.embed(chunks))
 
-            # For now, store the full document embedding (first chunk or average)
+            # Store ALL chunks with their embeddings
+            chunks_stored = 0
+            for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+                # Insert chunk text
+                cursor.execute(
+                    """
+                    INSERT INTO chunks (doc_id, chunk_index, conteudo)
+                    VALUES (?, ?, ?)
+                """,
+                    (doc_id, i, chunk_text),
+                )
+                chunk_id = conn.last_insert_rowid()
+
+                # Insert chunk embedding
+                embedding_bytes = sqlite_vec.serialize_float32(embedding.tolist())
+                cursor.execute(
+                    """
+                    INSERT INTO vec_chunks (chunk_id, embedding)
+                    VALUES (?, ?)
+                """,
+                    (chunk_id, embedding_bytes),
+                )
+                chunks_stored += 1
+
+            # Also store first chunk in legacy vec_documentos for backward compatibility
             if embeddings:
-                # Use first chunk embedding as document embedding
                 doc_embedding = embeddings[0].tolist()
                 embedding_bytes = sqlite_vec.serialize_float32(doc_embedding)
-
                 cursor.execute(
                     """
                     INSERT INTO vec_documentos (doc_id, embedding)
@@ -418,7 +480,7 @@ class IngestEngine:
             return IngestResult(
                 success=True,
                 doc_id=doc_id,
-                chunks=len(chunks),
+                chunks=chunks_stored,
                 source=source,
             )
 
@@ -486,6 +548,14 @@ class IngestEngine:
             result = cursor.fetchone()
             count: int = result[0] if result else 0
 
+            # Clear new chunk tables
+            try:
+                cursor.execute("DELETE FROM vec_chunks")
+                cursor.execute("DELETE FROM chunks")
+            except Exception:
+                pass  # Tables may not exist in legacy databases
+
+            # Clear legacy tables
             cursor.execute("DELETE FROM vec_documentos")
             cursor.execute("DELETE FROM documentos")
 
@@ -497,7 +567,7 @@ class IngestEngine:
         """Reindex all documents (regenerate embeddings).
 
         Returns:
-            Number of documents reindexed
+            Number of chunks reindexed
         """
         conn = self._get_connection()
         try:
@@ -508,20 +578,46 @@ class IngestEngine:
             for row in cursor.execute("SELECT id, conteudo FROM documentos"):
                 documents.append((row[0], row[1]))
 
-            # Clear embeddings
+            # Clear all embeddings and chunks
+            try:
+                cursor.execute("DELETE FROM vec_chunks")
+                cursor.execute("DELETE FROM chunks")
+            except Exception:
+                pass  # Tables may not exist
             cursor.execute("DELETE FROM vec_documentos")
 
-            # Regenerate
-            count = 0
+            # Regenerate all chunks
+            total_chunks = 0
             for doc_id, content in documents:
                 if content:
                     chunks = self._chunk_text(content)
                     embeddings = list(self.model.embed(chunks))
 
+                    # Store all chunks
+                    for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+                        cursor.execute(
+                            """
+                            INSERT INTO chunks (doc_id, chunk_index, conteudo)
+                            VALUES (?, ?, ?)
+                        """,
+                            (doc_id, i, chunk_text),
+                        )
+                        chunk_id = conn.last_insert_rowid()
+
+                        embedding_bytes = sqlite_vec.serialize_float32(embedding.tolist())
+                        cursor.execute(
+                            """
+                            INSERT INTO vec_chunks (chunk_id, embedding)
+                            VALUES (?, ?)
+                        """,
+                            (chunk_id, embedding_bytes),
+                        )
+                        total_chunks += 1
+
+                    # Also store first chunk in legacy table
                     if embeddings:
                         doc_embedding = embeddings[0].tolist()
                         embedding_bytes = sqlite_vec.serialize_float32(doc_embedding)
-
                         cursor.execute(
                             """
                             INSERT INTO vec_documentos (doc_id, embedding)
@@ -530,9 +626,7 @@ class IngestEngine:
                             (doc_id, embedding_bytes),
                         )
 
-                        count += 1
-
-            return count
+            return total_chunks
         finally:
             conn.close()
 
@@ -551,15 +645,28 @@ class IngestEngine:
             for r in cursor.execute("SELECT COUNT(*) FROM vec_documentos"):
                 total_embeddings = r[0]
 
+            # Count chunks
+            total_chunks = 0
+            total_chunk_embeddings = 0
+            try:
+                for r in cursor.execute("SELECT COUNT(*) FROM chunks"):
+                    total_chunks = r[0]
+                for r in cursor.execute("SELECT COUNT(*) FROM vec_chunks"):
+                    total_chunk_embeddings = r[0]
+            except Exception:
+                pass  # Tables may not exist
+
             total_size = 0
             for r in cursor.execute("SELECT SUM(LENGTH(conteudo)) FROM documentos"):
                 total_size = r[0] or 0
 
             return {
                 "total_documents": total_docs,
-                "total_embeddings": total_embeddings,
+                "total_chunks": total_chunks,
+                "total_chunk_embeddings": total_chunk_embeddings,
+                "total_legacy_embeddings": total_embeddings,
                 "total_size_bytes": total_size,
-                "status": "ok" if total_docs == total_embeddings else "incompleto",
+                "status": "ok" if total_chunks == total_chunk_embeddings else "incompleto",
             }
         finally:
             conn.close()

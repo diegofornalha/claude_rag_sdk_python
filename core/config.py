@@ -12,14 +12,17 @@ from pathlib import Path
 
 
 class EmbeddingModel(str, Enum):
-    """Modelos de embedding disponíveis."""
+    """Modelos de embedding disponíveis (FastEmbed compatíveis)."""
 
+    # Modelos em Inglês (BGE)
     BGE_SMALL = "BAAI/bge-small-en-v1.5"
-    BGE_LARGE = "BAAI/bge-large-en-v1.5"
     BGE_BASE = "BAAI/bge-base-en-v1.5"
-    # Futuro: suporte a OpenAI
-    # TEXT_EMBEDDING_3_SMALL = "text-embedding-3-small"
-    # TEXT_EMBEDDING_3_LARGE = "text-embedding-3-large"
+    BGE_LARGE = "BAAI/bge-large-en-v1.5"
+
+    # Modelos Multilíngues (suportam PT-BR)
+    MULTI_MINI = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    MULTI_MPNET = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+    MULTI_E5_LARGE = "intfloat/multilingual-e5-large"
 
     @property
     def dimensions(self) -> int:
@@ -28,8 +31,9 @@ class EmbeddingModel(str, Enum):
             "BAAI/bge-small-en-v1.5": 384,
             "BAAI/bge-base-en-v1.5": 768,
             "BAAI/bge-large-en-v1.5": 1024,
-            # "text-embedding-3-small": 1536,
-            # "text-embedding-3-large": 3072,
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": 384,
+            "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": 768,
+            "intfloat/multilingual-e5-large": 1024,
         }
         return dims.get(self.value, 384)
 
@@ -40,8 +44,31 @@ class EmbeddingModel(str, Enum):
             "BAAI/bge-small-en-v1.5": "bge-small",
             "BAAI/bge-base-en-v1.5": "bge-base",
             "BAAI/bge-large-en-v1.5": "bge-large",
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": "multi-mini",
+            "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": "multi-mpnet",
+            "intfloat/multilingual-e5-large": "multi-e5-large",
         }
         return names.get(self.value, "unknown")
+
+    @property
+    def language(self) -> str:
+        """Retorna idioma do modelo."""
+        if "multilingual" in self.value.lower():
+            return "multi"
+        return "en"
+
+    @property
+    def display_name(self) -> str:
+        """Nome amigável para exibição."""
+        display = {
+            "BAAI/bge-small-en-v1.5": "BGE Small (EN)",
+            "BAAI/bge-base-en-v1.5": "BGE Base (EN)",
+            "BAAI/bge-large-en-v1.5": "BGE Large (EN)",
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": "Multilingual Mini (50 langs)",
+            "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": "Multilingual MPNet (50 langs)",
+            "intfloat/multilingual-e5-large": "E5 Large (100 langs)",
+        }
+        return display.get(self.value, self.value)
 
 
 class ChunkingStrategy(str, Enum):
@@ -134,9 +161,21 @@ class RAGConfig:
         # Embedding model
         model_name = os.getenv("EMBEDDING_MODEL", "bge-small")
         model_map = {
+            # Inglês (BGE)
             "bge-small": EmbeddingModel.BGE_SMALL,
             "bge-base": EmbeddingModel.BGE_BASE,
             "bge-large": EmbeddingModel.BGE_LARGE,
+            # Multilíngue (suporta PT-BR)
+            "multi-mini": EmbeddingModel.MULTI_MINI,
+            "multi-mpnet": EmbeddingModel.MULTI_MPNET,
+            "multi-e5-large": EmbeddingModel.MULTI_E5_LARGE,
+            # Full names
+            "BAAI/bge-small-en-v1.5": EmbeddingModel.BGE_SMALL,
+            "BAAI/bge-base-en-v1.5": EmbeddingModel.BGE_BASE,
+            "BAAI/bge-large-en-v1.5": EmbeddingModel.BGE_LARGE,
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2": EmbeddingModel.MULTI_MINI,
+            "sentence-transformers/paraphrase-multilingual-mpnet-base-v2": EmbeddingModel.MULTI_MPNET,
+            "intfloat/multilingual-e5-large": EmbeddingModel.MULTI_E5_LARGE,
         }
         embedding_model = model_map.get(model_name, EmbeddingModel.BGE_SMALL)
 
@@ -193,6 +232,8 @@ class RAGConfig:
             "embedding": {
                 "model": self.embedding_model.value,
                 "short_name": self.embedding_model.short_name,
+                "display_name": self.embedding_model.display_name,
+                "language": self.embedding_model.language,
                 "dimensions": self.embedding_dimensions,
             },
             "database": {
