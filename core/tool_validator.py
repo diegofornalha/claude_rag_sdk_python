@@ -47,14 +47,16 @@ class ToolValidator:
 
     # Tools permitidas (whitelist)
     ALLOWED_TOOLS: set[str] = {
-        # RAG Tools
+        # RAG Search Tools
         "mcp__rag-tools__search_documents",
         "mcp__rag-tools__search_hybrid",
         "mcp__rag-tools__get_document",
         "mcp__rag-tools__list_sources",
-        # Opcionais de monitoramento
+        # RAG Ingest Tool
+        "mcp__rag-tools__ingest_document",
+        # Monitoring Tools
         "mcp__rag-tools__count_documents",
-        "mcp__rag-tools__get_metrics_summary",
+        "mcp__rag-tools__get_metrics",
         "mcp__rag-tools__get_health",
     }
 

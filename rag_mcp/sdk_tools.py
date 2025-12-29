@@ -1,17 +1,20 @@
 """
-MCP Server for Claude RAG SDK
+SDK MCP Tools for Claude RAG.
 
-Exposes RAG tools via Model Context Protocol (MCP).
-This server can be used with Claude Agent SDK or any MCP-compatible client.
+Custom tools using Claude Agent SDK @tool decorator.
+These tools use AgentFS as backend and follow SDK patterns.
 """
 
+import json
 import time
 from pathlib import Path
+from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from claude_agent_sdk import tool
 
-# Initialize MCP Server
-mcp = FastMCP("claude-rag-tools")
+# =============================================================================
+# GLOBAL STATE AND HELPERS
+# =============================================================================
 
 # Global RAG instance (initialized lazily)
 _rag = None
@@ -52,7 +55,7 @@ async def _get_rag():
         )
 
         _rag = await ClaudeRAG.open(options)
-        print(f"🚀 MCP RAG initialized: {_session_id}")
+        print(f"[SDK Tools] RAG initialized: {_session_id}")
 
     return _rag
 
@@ -62,8 +65,12 @@ async def _get_rag():
 # =============================================================================
 
 
-@mcp.tool()
-async def search_documents(query: str, top_k: int = 5, use_reranking: bool = True) -> list:
+@tool("search_documents", "Semantic search in indexed documents", {
+    "query": str,
+    "top_k": int,
+    "use_reranking": bool,
+})
+async def search_documents(args: dict[str, Any]) -> dict[str, Any]:
     """
     Semantic search in indexed documents.
 
@@ -75,6 +82,9 @@ async def search_documents(query: str, top_k: int = 5, use_reranking: bool = Tru
     Returns:
         List of relevant documents with source, content and score
     """
+    query = args["query"]
+    top_k = args.get("top_k", 5)
+    use_reranking = args.get("use_reranking", True)
     start_time = time.perf_counter()
 
     try:
@@ -103,14 +113,23 @@ async def search_documents(query: str, top_k: int = 5, use_reranking: bool = Tru
             result={"count": len(response)},
         )
 
-        return response
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False, indent=2)}]
+        }
 
     except Exception as e:
-        return [{"error": str(e)}]
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def search_hybrid(query: str, top_k: int = 5, vector_weight: float = 0.7) -> list:
+@tool("search_hybrid", "Hybrid search combining BM25 and vector search", {
+    "query": str,
+    "top_k": int,
+    "vector_weight": float,
+})
+async def search_hybrid(args: dict[str, Any]) -> dict[str, Any]:
     """
     Hybrid search combining BM25 (lexical) and vector search.
 
@@ -122,6 +141,10 @@ async def search_hybrid(query: str, top_k: int = 5, vector_weight: float = 0.7) 
     Returns:
         List of documents with hybrid scores
     """
+    query = args["query"]
+    top_k = args.get("top_k", 5)
+    vector_weight = args.get("vector_weight", 0.7)
+
     try:
         rag = await _get_rag()
         results = await rag.search_hybrid(
@@ -130,7 +153,7 @@ async def search_hybrid(query: str, top_k: int = 5, vector_weight: float = 0.7) 
             vector_weight=vector_weight,
         )
 
-        return [
+        response = [
             {
                 "doc_id": r.doc_id,
                 "source": r.source,
@@ -144,12 +167,19 @@ async def search_hybrid(query: str, top_k: int = 5, vector_weight: float = 0.7) 
             for r in results
         ]
 
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False, indent=2)}]
+        }
+
     except Exception as e:
-        return [{"error": str(e)}]
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def get_document(doc_id: int) -> dict:
+@tool("get_document", "Get full document by ID", {"doc_id": int})
+async def get_document(args: dict[str, Any]) -> dict[str, Any]:
     """
     Get full document by ID.
 
@@ -159,21 +189,31 @@ async def get_document(doc_id: int) -> dict:
     Returns:
         Complete document with all fields
     """
+    doc_id = args["doc_id"]
+
     try:
         rag = await _get_rag()
         doc = await rag.get_document(doc_id)
 
         if doc is None:
-            return {"error": f"Document {doc_id} not found"}
+            return {
+                "content": [{"type": "text", "text": f"Documento {doc_id} não encontrado"}],
+                "is_error": True,
+            }
 
-        return doc
+        return {
+            "content": [{"type": "text", "text": json.dumps(doc, ensure_ascii=False, indent=2)}]
+        }
 
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def list_sources() -> list:
+@tool("list_sources", "List all available document sources", {})
+async def list_sources(args: dict[str, Any]) -> dict[str, Any]:
     """
     List all available document sources.
 
@@ -182,14 +222,21 @@ async def list_sources() -> list:
     """
     try:
         rag = await _get_rag()
-        return await rag.list_sources()
+        sources = await rag.list_sources()
+
+        return {
+            "content": [{"type": "text", "text": json.dumps(sources, ensure_ascii=False, indent=2)}]
+        }
 
     except Exception as e:
-        return [{"error": str(e)}]
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def count_documents() -> dict:
+@tool("count_documents", "Count documents and embeddings", {})
+async def count_documents(args: dict[str, Any]) -> dict[str, Any]:
     """
     Count documents and embeddings.
 
@@ -199,14 +246,25 @@ async def count_documents() -> dict:
     try:
         rag = await _get_rag()
         stats = await rag.stats()
-        return stats.get("documents", {})
+        doc_stats = stats.get("documents", {})
+
+        return {
+            "content": [{"type": "text", "text": json.dumps(doc_stats, ensure_ascii=False, indent=2)}]
+        }
 
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def ingest_document(content: str, source: str, metadata: dict | None = None) -> dict:
+@tool("ingest_document", "Add a document to the knowledge base", {
+    "content": str,
+    "source": str,
+    "metadata": dict,
+})
+async def ingest_document(args: dict[str, Any]) -> dict[str, Any]:
     """
     Add a document to the knowledge base.
 
@@ -218,6 +276,9 @@ async def ingest_document(content: str, source: str, metadata: dict | None = Non
     Returns:
         Info about ingested document including doc_id
     """
+    content = args["content"]
+    source = args["source"]
+    metadata = args.get("metadata")
     start_time = time.perf_counter()
 
     try:
@@ -233,16 +294,23 @@ async def ingest_document(content: str, source: str, metadata: dict | None = Non
             result={"doc_id": result.doc_id if hasattr(result, "doc_id") else None},
         )
 
-        return {
+        response = {
             "success": True,
             "doc_id": result.doc_id if hasattr(result, "doc_id") else None,
             "source": source,
             "content_length": len(content),
-            "message": f"Document '{source}' ingested successfully",
+            "message": f"Documento '{source}' ingerido com sucesso",
+        }
+
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False, indent=2)}]
         }
 
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
 # =============================================================================
@@ -250,8 +318,11 @@ async def ingest_document(content: str, source: str, metadata: dict | None = Non
 # =============================================================================
 
 
-@mcp.tool()
-async def create_file(path: str, content: str) -> dict:
+@tool("create_file", "Create file in agent filesystem", {
+    "path": str,
+    "content": str,
+})
+async def create_file(args: dict[str, Any]) -> dict[str, Any]:
     """
     Create file in agent filesystem.
 
@@ -262,6 +333,9 @@ async def create_file(path: str, content: str) -> dict:
     Returns:
         Info about created file
     """
+    path = args["path"]
+    content = args["content"]
+
     try:
         rag = await _get_rag()
         await rag.fs.write_file(f"/{path}", content)
@@ -269,7 +343,7 @@ async def create_file(path: str, content: str) -> dict:
         # Also save to physical filesystem organized by session
         session_id = _get_session_id()
         if session_id and session_id != "default":
-            # Get backend directory (assuming it's 3 levels up from this file)
+            # Get backend directory
             backend_dir = Path(__file__).parent.parent.parent
             artifacts_dir = backend_dir / "artifacts" / session_id
             artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -279,18 +353,25 @@ async def create_file(path: str, content: str) -> dict:
             physical_file = artifacts_dir / filename
             physical_file.write_text(content, encoding="utf-8")
 
-        return {
+        response = {
             "success": True,
             "path": path,
             "size": len(content),
         }
 
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False)}]
+        }
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def read_file(path: str) -> dict:
+@tool("read_file", "Read file from agent filesystem", {"path": str})
+async def read_file(args: dict[str, Any]) -> dict[str, Any]:
     """
     Read file from agent filesystem.
 
@@ -300,23 +381,32 @@ async def read_file(path: str) -> dict:
     Returns:
         File content
     """
+    path = args["path"]
+
     try:
         rag = await _get_rag()
         content = await rag.fs.read_file(f"/{path}")
 
-        return {
+        response = {
             "success": True,
             "path": path,
             "content": content,
             "size": len(content) if content else 0,
         }
 
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False)}]
+        }
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def list_files(directory: str = "/") -> dict:
+@tool("list_files", "List files in agent filesystem", {"directory": str})
+async def list_files(args: dict[str, Any]) -> dict[str, Any]:
     """
     List files in agent filesystem.
 
@@ -326,29 +416,36 @@ async def list_files(directory: str = "/") -> dict:
     Returns:
         List of files and directories
     """
+    directory = args.get("directory", "/")
+
     try:
         rag = await _get_rag()
         entries = await rag.fs.readdir(directory)
 
         files = []
         for entry in entries:
-            files.append(
-                {
-                    "name": entry.name,
-                    "size": entry.size if hasattr(entry, "size") else 0,
-                    "is_dir": entry.is_dir() if hasattr(entry, "is_dir") else False,
-                }
-            )
+            files.append({
+                "name": entry.name,
+                "size": entry.size if hasattr(entry, "size") else 0,
+                "is_dir": entry.is_dir() if hasattr(entry, "is_dir") else False,
+            })
 
-        return {
+        response = {
             "success": True,
             "directory": directory,
             "files": files,
             "count": len(files),
         }
 
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False, indent=2)}]
+        }
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
 # =============================================================================
@@ -356,8 +453,8 @@ async def list_files(directory: str = "/") -> dict:
 # =============================================================================
 
 
-@mcp.tool()
-async def set_state(key: str, value: str) -> dict:
+@tool("set_state", "Save state in KV store", {"key": str, "value": str})
+async def set_state(args: dict[str, Any]) -> dict[str, Any]:
     """
     Save state in KV store.
 
@@ -368,22 +465,32 @@ async def set_state(key: str, value: str) -> dict:
     Returns:
         Confirmation
     """
+    key = args["key"]
+    value = args["value"]
+
     try:
         rag = await _get_rag()
         await rag.kv.set(key, value)
 
-        return {
+        response = {
             "success": True,
             "key": key,
             "size": len(value),
         }
 
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False)}]
+        }
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def get_state(key: str) -> dict:
+@tool("get_state", "Get state from KV store", {"key": str})
+async def get_state(args: dict[str, Any]) -> dict[str, Any]:
     """
     Get state from KV store.
 
@@ -393,25 +500,37 @@ async def get_state(key: str) -> dict:
     Returns:
         Stored value or error
     """
+    key = args["key"]
+
     try:
         rag = await _get_rag()
         value = await rag.kv.get(key)
 
         if value is None:
-            return {"success": False, "key": key, "error": "Key not found"}
+            return {
+                "content": [{"type": "text", "text": f"Chave '{key}' não encontrada"}],
+                "is_error": True,
+            }
 
-        return {
+        response = {
             "success": True,
             "key": key,
             "value": value,
         }
 
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False)}]
+        }
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def list_states(prefix: str = "") -> dict:
+@tool("list_states", "List keys in KV store", {"prefix": str})
+async def list_states(args: dict[str, Any]) -> dict[str, Any]:
     """
     List keys in KV store.
 
@@ -421,19 +540,28 @@ async def list_states(prefix: str = "") -> dict:
     Returns:
         List of keys
     """
+    prefix = args.get("prefix", "")
+
     try:
         rag = await _get_rag()
         keys = await rag.kv.list(prefix=prefix if prefix else None)
 
-        return {
+        response = {
             "success": True,
             "prefix": prefix or "(all)",
             "keys": keys,
             "count": len(keys),
         }
 
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False, indent=2)}]
+        }
+
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
 # =============================================================================
@@ -441,8 +569,8 @@ async def list_states(prefix: str = "") -> dict:
 # =============================================================================
 
 
-@mcp.tool()
-async def get_metrics() -> dict:
+@tool("get_metrics", "Get RAG system metrics", {})
+async def get_metrics(args: dict[str, Any]) -> dict[str, Any]:
     """
     Get RAG system metrics.
 
@@ -451,14 +579,21 @@ async def get_metrics() -> dict:
     """
     try:
         rag = await _get_rag()
-        return await rag.stats()
+        stats = await rag.stats()
+
+        return {
+            "content": [{"type": "text", "text": json.dumps(stats, ensure_ascii=False, indent=2)}]
+        }
 
     except Exception as e:
-        return {"error": str(e)}
+        return {
+            "content": [{"type": "text", "text": f"Erro: {str(e)}"}],
+            "is_error": True,
+        }
 
 
-@mcp.tool()
-async def get_health() -> dict:
+@tool("get_health", "Get system health status", {})
+async def get_health(args: dict[str, Any]) -> dict[str, Any]:
     """
     Get system health status.
 
@@ -469,20 +604,19 @@ async def get_health() -> dict:
         rag = await _get_rag()
         stats = await rag.stats()
 
-        return {
+        response = {
             "status": "healthy",
             "session_id": _session_id,
             "documents": stats.get("documents", {}).get("total_documents", 0),
             "cache_enabled": stats.get("cache", {}).get("enabled", False),
         }
 
+        return {
+            "content": [{"type": "text", "text": json.dumps(response, ensure_ascii=False, indent=2)}]
+        }
+
     except Exception as e:
-        return {"status": "unhealthy", "error": str(e)}
-
-
-# =============================================================================
-# MAIN
-# =============================================================================
-
-if __name__ == "__main__":
-    mcp.run()
+        return {
+            "content": [{"type": "text", "text": json.dumps({"status": "unhealthy", "error": str(e)}, ensure_ascii=False)}],
+            "is_error": True,
+        }

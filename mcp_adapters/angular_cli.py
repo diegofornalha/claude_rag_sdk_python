@@ -22,7 +22,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from claude_rag_sdk.mcp import (
+from claude_rag_sdk.mcp_client import (
     BaseMCPAdapter,
     MCPAdapterConfig,
     MCPAdapterInfo,

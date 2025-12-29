@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <title>FAQ e Glossário - IA em Grandes Empresas</title>
+  <style>
+    body{font-family: Arial, sans-serif; margin: 40px; line-height: 1.4;}
+    h1,h2{color:#1a1a1a;}
+    code{background:#f5f5f5; padding:2px 4px; border-radius:4px;}
+    .note{background:#fff7e6; border-left:4px solid #ffb020; padding:10px 12px; margin:12px 0;}
+    table{border-collapse:collapse; width:100%; margin-top:12px;}
+    th,td{border:1px solid #ddd; padding:8px; vertical-align:top;}
+    th{background:#f0f0f0;}
+  </style>
+</head>
+<body>
+  <h1>FAQ e Glossário - IA em Grandes Empresas</h1>
+  <p><strong>Data:</strong> 18/11/2025</p>
+
+  <h2>1) Perguntas frequentes</h2>
+  <p><strong>O que é RAG?</strong> É uma abordagem em que a IA busca evidências em documentos corporativos e gera a resposta com base nesses trechos.</p>
+  <p><strong>Por que citações são obrigatórias?</strong> Para permitir auditoria, reduzir alucinação e aumentar confiança do usuário.</p>
+  <p><strong>Qual a diferença entre RBAC e ABAC?</strong> RBAC usa papéis/grupos; ABAC usa atributos (área, classificação do documento, projeto, unidade).</p>
+
+  <div class="note">
+    <strong>Nota operacional:</strong> Para perguntas de alto risco (ex.: finanças, compliance), a recomendação é usar modo "evidência primeiro":
+    a resposta só é liberada se houver pelo menos 2 trechos consistentes de fontes autorizadas.
+  </div>
+
+  <h2>2) Glossário</h2>
+  <table>
+    <thead>
+      <tr><th>Termo</th><th>Definição</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Groundedness</td><td>Grau em que a resposta é suportada por evidências recuperadas.</td></tr>
+      <tr><td>Re-ranking</td><td>Etapa que reordena resultados recuperados para priorizar os mais relevantes.</td></tr>
+      <tr><td>Dataset vivo</td><td>Conjunto de perguntas reais (anonimizadas) usado para avaliar continuamente o sistema.</td></tr>
+      <tr><td>Canary</td><td>Liberação gradual para pequena porcentagem de usuários antes da liberação total.</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3) Regras rápidas para produção</h2>
+  <ul>
+    <li>Nunca registrar conteúdo de prompt/resposta em logs de produção.</li>
+    <li>Indexar documentos com metadados de classificação e data de vigência.</li>
+    <li>Monitorar latência p95 e custo por 1.000 perguntas.</li>
+  </ul>
+</body>
+</html>

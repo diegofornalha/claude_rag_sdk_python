@@ -5,7 +5,7 @@ Este módulo fornece o CORE para comunicação com MCP servers.
 Não depende de nenhum adapter específico.
 
 Uso básico:
-    from claude_rag_sdk.mcp import get_mcp_registry, get_adapter
+    from claude_rag_sdk.mcp_client import get_mcp_registry, get_adapter
 
     # Lista adapters disponíveis
     registry = get_mcp_registry()

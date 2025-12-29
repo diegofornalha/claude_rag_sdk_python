@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <title>Estudo de Caso - Programa de IA em Empresa X</title>
+  <style>
+    body{font-family: Arial, sans-serif; margin: 40px; line-height: 1.4;}
+    h1,h2,h3{color:#1a1a1a;}
+    .kpi{display:inline-block; border:1px solid #ddd; padding:8px 10px; border-radius:10px; margin:6px 6px 0 0;}
+    .muted{color:#666;}
+    ol li{margin-bottom:6px;}
+  </style>
+</head>
+<body>
+  <h1>Estudo de Caso - Programa de IA em Empresa X (Fictícia)</h1>
+  <p class="muted"><strong>Setor:</strong> Indústria e Serviços | <strong>Data:</strong> 22/11/2025</p>
+
+  <h2>1) Objetivo</h2>
+  <p>Implantar um assistente corporativo para reduzir tempo de busca por procedimentos e padronizar respostas em suporte interno.</p>
+
+  <h2>2) Resultados esperados (KPIs)</h2>
+  <span class="kpi">-25% tempo médio de atendimento</span>
+  <span class="kpi">+18% CSAT interno</span>
+  <span class="kpi">&lt; 4s p95 de latência</span>
+  <span class="kpi">&lt; R$ 45 por 1.000 perguntas</span>
+
+  <h2>3) Roadmap resumido</h2>
+  <ol>
+    <li><strong>Piloto (4 semanas):</strong> base documental restrita, 30 usuários-chave, avaliação semanal.</li>
+    <li><strong>Produção inicial (3 semanas):</strong> RBAC, observabilidade, runbooks, canary.</li>
+    <li><strong>Escala (5 semanas):</strong> multiárea, dataset vivo e processo de melhoria contínua.</li>
+  </ol>
+
+  <h2>4) Decisões importantes</h2>
+  <ul>
+    <li><strong>Busca híbrida</strong> para recall e melhor cobertura de termos específicos.</li>
+    <li><strong>Versionamento</strong> por <code>effective_date</code> para evitar uso de políticas antigas.</li>
+    <li><strong>Fluxo de incidentes</strong>: se groundedness cair por 2 dias, congelar mudanças e acionar war room.</li>
+  </ul>
+</body>
+</html>
