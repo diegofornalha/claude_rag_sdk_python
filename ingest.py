@@ -443,7 +443,7 @@ class IngestEngine:
 
             # Store ALL chunks with their embeddings
             chunks_stored = 0
-            for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+            for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings, strict=False)):
                 # Insert chunk text
                 cursor.execute(
                     """
@@ -594,7 +594,7 @@ class IngestEngine:
                     embeddings = list(self.model.embed(chunks))
 
                     # Store all chunks
-                    for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings)):
+                    for i, (chunk_text, embedding) in enumerate(zip(chunks, embeddings, strict=False)):
                         cursor.execute(
                             """
                             INSERT INTO chunks (doc_id, chunk_index, conteudo)
