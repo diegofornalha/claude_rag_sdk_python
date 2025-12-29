@@ -9,9 +9,10 @@ import json
 import threading
 import time
 from collections import OrderedDict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Callable, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -25,7 +26,7 @@ class CacheEntry(Generic[T]):
     created_at: datetime
     accessed_at: datetime
     access_count: int = 0
-    ttl_seconds: Optional[int] = None
+    ttl_seconds: int | None = None
     size_bytes: int = 0
 
     def is_expired(self) -> bool:
@@ -68,7 +69,7 @@ class LRUCache(Generic[T]):
     def __init__(
         self,
         max_size: int = 1000,
-        default_ttl: Optional[int] = None,  # TTL padrão em segundos
+        default_ttl: int | None = None,  # TTL padrão em segundos
     ):
         self.max_size = max_size
         self.default_ttl = default_ttl
@@ -83,7 +84,7 @@ class LRUCache(Generic[T]):
         except (TypeError, ValueError, UnicodeEncodeError):
             return 0  # Cannot serialize, estimate as zero
 
-    def get(self, key: str) -> Optional[T]:
+    def get(self, key: str) -> T | None:
         """
         Obtém valor do cache.
 
@@ -120,7 +121,7 @@ class LRUCache(Generic[T]):
         self,
         key: str,
         value: T,
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> None:
         """
         Define valor no cache.
@@ -202,7 +203,7 @@ class LRUCache(Generic[T]):
         self,
         key: str,
         factory: Callable[[], T],
-        ttl: Optional[int] = None,
+        ttl: int | None = None,
     ) -> T:
         """
         Obtém do cache ou cria usando factory.
@@ -264,7 +265,7 @@ class EmbeddingCache:
         """Cria chave de cache para texto."""
         return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
-    def get(self, text: str) -> Optional[list[float]]:
+    def get(self, text: str) -> list[float] | None:
         """Obtém embedding do cache."""
         key = self._make_key(text)
         return self._cache.get(key)
@@ -301,7 +302,7 @@ class ResponseCache:
         content = f"{query}:{top_k}:{extra}" if extra else f"{query}:{top_k}"
         return hashlib.sha256(content.encode("utf-8")).hexdigest()[:16]
 
-    def get(self, query: str, top_k: int = 5, **kwargs) -> Optional[dict]:
+    def get(self, query: str, top_k: int = 5, **kwargs) -> dict | None:
         """Obtém resposta do cache."""
         key = self._make_key(query, top_k, **kwargs)
         return self._cache.get(key)
@@ -317,8 +318,8 @@ class ResponseCache:
 
 
 # Instâncias globais
-_embedding_cache: Optional[EmbeddingCache] = None
-_response_cache: Optional[ResponseCache] = None
+_embedding_cache: EmbeddingCache | None = None
+_response_cache: ResponseCache | None = None
 
 
 def get_embedding_cache() -> EmbeddingCache:

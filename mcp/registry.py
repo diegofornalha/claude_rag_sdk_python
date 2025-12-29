@@ -10,7 +10,6 @@ O registry é responsável por:
 
 import asyncio
 import logging
-from typing import Dict, List, Optional, Type
 
 from .base import BaseMCPAdapter, MCPAdapterInfo, MCPAdapterStatus
 from .config import MCPConfig, get_mcp_config
@@ -39,17 +38,17 @@ class MCPRegistry:
     o código existente.
     """
 
-    def __init__(self, config: Optional[MCPConfig] = None):
+    def __init__(self, config: MCPConfig | None = None):
         self._config = config or get_mcp_config()
-        self._adapter_classes: Dict[str, Type[BaseMCPAdapter]] = {}
-        self._active_adapters: Dict[str, BaseMCPAdapter] = {}
+        self._adapter_classes: dict[str, type[BaseMCPAdapter]] = {}
+        self._active_adapters: dict[str, BaseMCPAdapter] = {}
         self._lock = asyncio.Lock()
 
     @property
     def config(self) -> MCPConfig:
         return self._config
 
-    def register_adapter(self, name: str, adapter_class: Type[BaseMCPAdapter]) -> None:
+    def register_adapter(self, name: str, adapter_class: type[BaseMCPAdapter]) -> None:
         """
         Registra uma classe de adapter no registry.
 
@@ -80,15 +79,15 @@ class MCPRegistry:
             return True
         return False
 
-    def list_registered(self) -> List[str]:
+    def list_registered(self) -> list[str]:
         """Lista todos os adapters registrados (habilitados ou não)."""
         return list(self._adapter_classes.keys())
 
-    def list_enabled(self) -> List[str]:
+    def list_enabled(self) -> list[str]:
         """Lista apenas adapters habilitados na configuração."""
         return [name for name in self._adapter_classes if self._config.is_adapter_enabled(name)]
 
-    def list_active(self) -> List[str]:
+    def list_active(self) -> list[str]:
         """Lista adapters atualmente conectados."""
         return list(self._active_adapters.keys())
 
@@ -174,7 +173,7 @@ class MCPRegistry:
                 del self._active_adapters[name]
             logger.info("All adapters disconnected")
 
-    def get_adapter_info(self, name: str) -> Optional[MCPAdapterInfo]:
+    def get_adapter_info(self, name: str) -> MCPAdapterInfo | None:
         """Obtém informações de um adapter."""
         if name not in self._adapter_classes:
             return None
@@ -194,7 +193,7 @@ class MCPRegistry:
 
         return info
 
-    def get_all_adapters_info(self) -> List[MCPAdapterInfo]:
+    def get_all_adapters_info(self) -> list[MCPAdapterInfo]:
         """Obtém informações de todos os adapters registrados."""
         return [
             self.get_adapter_info(name)
@@ -204,7 +203,7 @@ class MCPRegistry:
 
 
 # Registry global singleton
-_global_registry: Optional[MCPRegistry] = None
+_global_registry: MCPRegistry | None = None
 
 
 def get_mcp_registry() -> MCPRegistry:
@@ -215,7 +214,7 @@ def get_mcp_registry() -> MCPRegistry:
     return _global_registry
 
 
-def register_adapter(name: str, adapter_class: Type[BaseMCPAdapter]) -> None:
+def register_adapter(name: str, adapter_class: type[BaseMCPAdapter]) -> None:
     """Atalho para registrar adapter no registry global."""
     get_mcp_registry().register_adapter(name, adapter_class)
 

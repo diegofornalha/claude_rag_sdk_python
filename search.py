@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 import apsw
 import sqlite_vec
@@ -33,10 +33,10 @@ class SearchResult:
     source: str
     content: str
     similarity: float
-    doc_type: Optional[str] = None
-    rerank_score: Optional[float] = None
-    rank: Optional[int] = None
-    metadata: Optional[dict] = None
+    doc_type: str | None = None
+    rerank_score: float | None = None
+    rank: int | None = None
+    metadata: dict | None = None
 
     def to_dict(self) -> dict:
         """Convert to dictionary."""
@@ -98,10 +98,10 @@ class SearchEngine:
         self.cache_embeddings = cache_embeddings
 
         # Lazy load
-        self._model: Optional[TextEmbedding] = None
+        self._model: TextEmbedding | None = None
         self._embedding_cache: dict[str, list[float]] = {}
         self._reranker: Any = None
-        self._prompt_guard: Optional[PromptGuard] = None
+        self._prompt_guard: PromptGuard | None = None
 
     @property
     def model(self) -> TextEmbedding:
@@ -136,7 +136,7 @@ class SearchEngine:
         """Convert embedding to bytes for sqlite-vec."""
         return sqlite_vec.serialize_float32(embedding)
 
-    def _check_prompt_safety(self, query: str) -> tuple[bool, Optional[str]]:
+    def _check_prompt_safety(self, query: str) -> tuple[bool, str | None]:
         """Check if query is safe (no prompt injection)."""
         if not self.enable_prompt_guard:
             return True, None
@@ -159,8 +159,8 @@ class SearchEngine:
         self,
         query: str,
         top_k: int = 5,
-        use_reranking: Optional[bool] = None,
-        use_adaptive: Optional[bool] = None,
+        use_reranking: bool | None = None,
+        use_adaptive: bool | None = None,
         content_max_length: int = 1000,
     ) -> list[SearchResult]:
         """Perform semantic search.
@@ -309,7 +309,7 @@ class SearchEngine:
 
         return results
 
-    async def get_document(self, doc_id: int) -> Optional[dict]:
+    async def get_document(self, doc_id: int) -> dict | None:
         """Get full document by ID.
 
         Args:

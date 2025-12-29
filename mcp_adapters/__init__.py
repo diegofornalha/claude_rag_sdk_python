@@ -18,13 +18,11 @@ Adapters disponíveis:
 - angular_cli: Integração com Angular CLI MCP Server
 """
 
-from typing import List
-
 # Lista de adapters disponíveis
 # Cada adapter é importado de forma segura (try/except)
 # para não quebrar se o adapter for removido
 
-_available_adapters: List[str] = []
+_available_adapters: list[str] = []
 
 
 def _try_register_angular_cli():
@@ -50,7 +48,7 @@ def register_all_adapters():
     # _try_register_vue_cli()
 
 
-def get_available_adapters() -> List[str]:
+def get_available_adapters() -> list[str]:
     """Retorna lista de adapters que foram carregados com sucesso."""
     return _available_adapters.copy()
 

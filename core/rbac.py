@@ -8,7 +8,6 @@ import json
 from contextvars import ContextVar
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 
 from .logger import logger
 
@@ -195,7 +194,7 @@ class RBACFilter:
 
 
 # Context var para usuário atual (similar ao logger)
-current_user_var: ContextVar[Optional[User]] = ContextVar("current_user", default=None)
+current_user_var: ContextVar[User | None] = ContextVar("current_user", default=None)
 
 
 def set_current_user(user: User) -> None:
@@ -215,7 +214,7 @@ def get_rbac_filter() -> RBACFilter:
 
 
 # Utilitários
-def parse_user_from_header(auth_header: Optional[str]) -> User:
+def parse_user_from_header(auth_header: str | None) -> User:
     """
     Parse usuário de header de autorização.
 

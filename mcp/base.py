@@ -8,7 +8,7 @@ O core MCP não depende de nenhum adapter específico.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class MCPAdapterStatus(Enum):
@@ -26,9 +26,9 @@ class MCPToolResult:
 
     success: bool
     data: Any = None
-    error: Optional[str] = None
-    tool_name: Optional[str] = None
-    execution_time_ms: Optional[float] = None
+    error: str | None = None
+    tool_name: str | None = None
+    execution_time_ms: float | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -48,8 +48,8 @@ class MCPDocument:
     title: str
     source: str
     doc_type: str = "markdown"
-    url: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    url: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -59,7 +59,7 @@ class MCPAdapterInfo:
     name: str
     description: str
     version: str
-    tools: List[str]
+    tools: list[str]
     enabled: bool = True
     status: MCPAdapterStatus = MCPAdapterStatus.DISCONNECTED
 
@@ -92,7 +92,7 @@ class BaseMCPAdapter(ABC):
 
     @property
     @abstractmethod
-    def command(self) -> List[str]:
+    def command(self) -> list[str]:
         """Comando para iniciar o MCP server"""
         pass
 
@@ -112,17 +112,17 @@ class BaseMCPAdapter(ABC):
         pass
 
     @abstractmethod
-    async def list_tools(self) -> List[str]:
+    async def list_tools(self) -> list[str]:
         """Lista tools disponíveis no MCP server"""
         pass
 
     @abstractmethod
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> MCPToolResult:
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> MCPToolResult:
         """Chama uma tool do MCP server"""
         pass
 
     @abstractmethod
-    async def get_documents_for_ingest(self, **kwargs) -> List[MCPDocument]:
+    async def get_documents_for_ingest(self, **kwargs) -> list[MCPDocument]:
         """
         Obtém documentos do MCP para ingestão no RAG.
 
@@ -152,16 +152,16 @@ class MCPIngestCapability(ABC):
     """
 
     @abstractmethod
-    async def search_documentation(self, query: str) -> List[MCPDocument]:
+    async def search_documentation(self, query: str) -> list[MCPDocument]:
         """Busca documentação"""
         pass
 
     @abstractmethod
-    async def get_examples(self, topic: str) -> List[MCPDocument]:
+    async def get_examples(self, topic: str) -> list[MCPDocument]:
         """Obtém exemplos de código"""
         pass
 
     @abstractmethod
-    async def get_best_practices(self) -> List[MCPDocument]:
+    async def get_best_practices(self) -> list[MCPDocument]:
         """Obtém guia de best practices"""
         pass

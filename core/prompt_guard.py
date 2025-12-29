@@ -7,7 +7,6 @@
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class ThreatLevel(str, Enum):
@@ -27,9 +26,9 @@ class ScanResult:
     is_safe: bool
     threat_level: ThreatLevel
     threats_detected: list[str]
-    sanitized_input: Optional[str] = None
-    blocked_reason: Optional[str] = None
-    message: Optional[str] = None
+    sanitized_input: str | None = None
+    blocked_reason: str | None = None
+    message: str | None = None
 
 
 class PromptGuard:
@@ -248,7 +247,7 @@ class PromptGuard:
 
 
 # Instância global
-_prompt_guard: Optional[PromptGuard] = None
+_prompt_guard: PromptGuard | None = None
 
 
 def get_prompt_guard(strict_mode: bool = False) -> PromptGuard:

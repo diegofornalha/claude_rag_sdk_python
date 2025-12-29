@@ -6,11 +6,12 @@
 
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from functools import wraps
-from typing import Callable, Optional, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
@@ -31,8 +32,8 @@ class CircuitStats:
     successful_calls: int = 0
     failed_calls: int = 0
     rejected_calls: int = 0
-    last_failure_time: Optional[datetime] = None
-    last_success_time: Optional[datetime] = None
+    last_failure_time: datetime | None = None
+    last_success_time: datetime | None = None
     consecutive_failures: int = 0
     consecutive_successes: int = 0
 
@@ -70,7 +71,7 @@ class CircuitBreaker:
         self._state = CircuitState.CLOSED
         self._stats = CircuitStats()
         self._lock = threading.RLock()
-        self._opened_at: Optional[float] = None
+        self._opened_at: float | None = None
         self._half_open_calls: int = 0
 
     @property
@@ -163,7 +164,7 @@ class CircuitBreaker:
             self._stats.total_calls += 1
             self._stats.rejected_calls += 1
 
-    def call(self, func: Callable[[], T], fallback: Optional[Callable[[], T]] = None) -> T:
+    def call(self, func: Callable[[], T], fallback: Callable[[], T] | None = None) -> T:
         """
         Executa função com proteção do circuit breaker.
 
@@ -222,7 +223,7 @@ def circuit_breaker(
     name: str,
     failure_threshold: int = 5,
     timeout: float = 30.0,
-    fallback: Optional[Callable] = None,
+    fallback: Callable | None = None,
 ):
     """
     Decorator para adicionar circuit breaker a uma função.

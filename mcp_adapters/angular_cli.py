@@ -20,7 +20,7 @@ Tools disponíveis do Angular CLI MCP:
 
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from claude_rag_sdk.mcp import (
     BaseMCPAdapter,
@@ -75,13 +75,13 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
             local_only: false
     """
 
-    def __init__(self, config: Optional[MCPAdapterConfig] = None):
+    def __init__(self, config: MCPAdapterConfig | None = None):
         self._config = config or MCPAdapterConfig(
             enabled=False,
             command=["npx", "-y", "@angular/cli", "mcp"],
         )
-        self._client: Optional[MCPClient] = None
-        self._available_tools: List[str] = []
+        self._client: MCPClient | None = None
+        self._available_tools: list[str] = []
 
     @property
     def name(self) -> str:
@@ -96,7 +96,7 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
         return "1.0.0"
 
     @property
-    def command(self) -> List[str]:
+    def command(self) -> list[str]:
         cmd = self._config.command.copy()
         # Adiciona opções se configuradas
         if self._config.options.get("read_only"):
@@ -135,11 +135,11 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
         """Verifica se está conectado."""
         return self._client is not None and await self._client.is_connected()
 
-    async def list_tools(self) -> List[str]:
+    async def list_tools(self) -> list[str]:
         """Lista tools disponíveis."""
         return self._available_tools.copy()
 
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> MCPToolResult:
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> MCPToolResult:
         """Chama uma tool do Angular CLI MCP."""
         if not self._client:
             return MCPToolResult(
@@ -166,7 +166,7 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
 
     # === MCPIngestCapability Implementation ===
 
-    async def search_documentation(self, query: str) -> List[MCPDocument]:
+    async def search_documentation(self, query: str) -> list[MCPDocument]:
         """
         Busca na documentação oficial do Angular.
 
@@ -184,7 +184,7 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
 
         # MCP retorna estrutura: {results: [...], top_result_content: "..."}
         data = result.data
-        documents: List[MCPDocument] = []
+        documents: list[MCPDocument] = []
 
         # Extrai dados estruturados se disponíveis
         if isinstance(data, dict):
@@ -259,7 +259,7 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
 
         return documents
 
-    async def get_examples(self, topic: str) -> List[MCPDocument]:
+    async def get_examples(self, topic: str) -> list[MCPDocument]:
         """
         Obtém exemplos de código para um tópico.
 
@@ -292,7 +292,7 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
             )
         ]
 
-    async def get_best_practices(self) -> List[MCPDocument]:
+    async def get_best_practices(self) -> list[MCPDocument]:
         """
         Obtém o Angular Best Practices Guide.
 
@@ -323,10 +323,10 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
 
     async def get_documents_for_ingest(
         self,
-        queries: Optional[List[str]] = None,
+        queries: list[str] | None = None,
         include_examples: bool = True,
         include_best_practices: bool = True,
-    ) -> List[MCPDocument]:
+    ) -> list[MCPDocument]:
         """
         Obtém todos os documentos para ingestão no RAG.
 
@@ -338,7 +338,7 @@ class AngularCLIMCPAdapter(BaseMCPAdapter, MCPIngestCapability):
         Returns:
             Lista de todos os documentos coletados
         """
-        documents: List[MCPDocument] = []
+        documents: list[MCPDocument] = []
 
         # Queries para documentação
         search_queries = queries or DEFAULT_DOC_QUERIES

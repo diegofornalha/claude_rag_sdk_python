@@ -9,7 +9,6 @@ import os
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class EmbeddingModel(str, Enum):
@@ -115,7 +114,7 @@ class RAGConfig:
         return self.embedding_model.value
 
     @classmethod
-    def from_env(cls, db_path: Optional[Path] = None) -> "RAGConfig":
+    def from_env(cls, db_path: Path | None = None) -> "RAGConfig":
         """
         Cria configuração a partir de variáveis de ambiente.
 
@@ -230,7 +229,7 @@ class RAGConfig:
 
 
 # Instância global
-_config: Optional[RAGConfig] = None
+_config: RAGConfig | None = None
 
 
 def get_config() -> RAGConfig:

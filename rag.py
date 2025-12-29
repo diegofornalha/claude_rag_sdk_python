@@ -1,7 +1,7 @@
 """Main ClaudeRAG class - unified interface for RAG operations."""
 
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import AsyncIterator, Optional, Union
 
 from agentfs_sdk import AgentFS, AgentFSOptions
 
@@ -43,7 +43,7 @@ class ClaudeRAG:
         options: ClaudeRAGOptions,
         search_engine: SearchEngine,
         ingest_engine: IngestEngine,
-        agent_engine: Optional[AgentEngine] = None,
+        agent_engine: AgentEngine | None = None,
     ):
         """Private constructor - use ClaudeRAG.open() instead."""
         self._agentfs = agentfs
@@ -180,8 +180,8 @@ class ClaudeRAG:
     async def search(
         self,
         query: str,
-        top_k: Optional[int] = None,
-        use_reranking: Optional[bool] = None,
+        top_k: int | None = None,
+        use_reranking: bool | None = None,
     ) -> list[SearchResult]:
         """Perform semantic search.
 
@@ -209,8 +209,8 @@ class ClaudeRAG:
     async def search_hybrid(
         self,
         query: str,
-        top_k: Optional[int] = None,
-        vector_weight: Optional[float] = None,
+        top_k: int | None = None,
+        vector_weight: float | None = None,
     ) -> list[HybridSearchResult]:
         """Perform hybrid search (semantic + BM25).
 
@@ -235,7 +235,7 @@ class ClaudeRAG:
             vector_weight=weight,
         )
 
-    async def get_document(self, doc_id: int) -> Optional[dict]:
+    async def get_document(self, doc_id: int) -> dict | None:
         """Get full document by ID.
 
         Args:
@@ -365,8 +365,8 @@ class ClaudeRAG:
 
     async def add_document(
         self,
-        path: Union[str, Path],
-        metadata: Optional[dict] = None,
+        path: str | Path,
+        metadata: dict | None = None,
     ) -> IngestResult:
         """Convenience method to add a document.
 
@@ -383,7 +383,7 @@ class ClaudeRAG:
         self,
         content: str,
         source: str,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> IngestResult:
         """Convenience method to add text content.
 

@@ -8,7 +8,6 @@
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class BlockReason(str, Enum):
@@ -26,8 +25,8 @@ class ValidationResult:
 
     is_valid: bool
     tool_name: str
-    block_reason: Optional[BlockReason] = None
-    details: Optional[str] = None
+    block_reason: BlockReason | None = None
+    details: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -154,7 +153,6 @@ class ToolValidator:
         " || ",
         "`",
         "$(",
-        "$(",
         "${",
         "{{",
         "}}",
@@ -180,7 +178,7 @@ class ToolValidator:
         self.strict_mode = strict_mode
         self._dangerous_patterns = [re.compile(p, re.IGNORECASE) for p in self.DANGEROUS_PATTERNS]
 
-    def validate(self, tool_name: str, inputs: Optional[dict] = None) -> ValidationResult:
+    def validate(self, tool_name: str, inputs: dict | None = None) -> ValidationResult:
         """
         Valida uma chamada de tool.
 
@@ -256,7 +254,7 @@ class ToolValidator:
         Returns:
             True se inputs sao seguros
         """
-        for key, value in inputs.items():
+        for _key, value in inputs.items():
             if not self._is_safe_value(value):
                 return False
         return True
@@ -298,11 +296,11 @@ class ToolValidator:
 
     def get_allowed_tools(self) -> list[str]:
         """Retorna lista de tools permitidas."""
-        return sorted(list(self.ALLOWED_TOOLS))
+        return sorted(self.ALLOWED_TOOLS)
 
 
 # Instancia global
-_tool_validator: Optional[ToolValidator] = None
+_tool_validator: ToolValidator | None = None
 
 
 def get_tool_validator(strict_mode: bool = True) -> ToolValidator:
@@ -313,7 +311,7 @@ def get_tool_validator(strict_mode: bool = True) -> ToolValidator:
     return _tool_validator
 
 
-def validate_tool(tool_name: str, inputs: Optional[dict] = None) -> ValidationResult:
+def validate_tool(tool_name: str, inputs: dict | None = None) -> ValidationResult:
     """Valida uma chamada de tool usando validador global."""
     return get_tool_validator().validate(tool_name, inputs)
 

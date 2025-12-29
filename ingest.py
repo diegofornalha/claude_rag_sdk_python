@@ -3,7 +3,6 @@
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
 
 import apsw
 import sqlite_vec
@@ -25,10 +24,10 @@ class IngestResult:
     """
 
     success: bool
-    doc_id: Optional[int] = None
+    doc_id: int | None = None
     chunks: int = 0
-    source: Optional[str] = None
-    error: Optional[str] = None
+    source: str | None = None
+    error: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -54,7 +53,7 @@ class Document:
     content: str
     source: str
     doc_type: str = "txt"
-    metadata: Optional[dict] = None
+    metadata: dict | None = None
 
 
 class IngestEngine:
@@ -96,7 +95,7 @@ class IngestEngine:
         self.chunking_strategy = chunking_strategy
 
         # Lazy load
-        self._model: Optional[TextEmbedding] = None
+        self._model: TextEmbedding | None = None
 
         # Ensure database exists
         self._ensure_database()
@@ -255,8 +254,8 @@ class IngestEngine:
                 reader = pypdf.PdfReader(str(file_path))
                 text = "\n".join(page.extract_text() or "" for page in reader.pages)
                 return text, "pdf"
-            except ImportError:
-                raise ImportError("pypdf required for PDF files: pip install pypdf")
+            except ImportError as e:
+                raise ImportError("pypdf required for PDF files: pip install pypdf") from e
 
         elif suffix == ".docx":
             try:
@@ -265,8 +264,10 @@ class IngestEngine:
                 doc = docx.Document(str(file_path))
                 text = "\n".join(para.text for para in doc.paragraphs)
                 return text, "docx"
-            except ImportError:
-                raise ImportError("python-docx required for DOCX files: pip install python-docx")
+            except ImportError as e:
+                raise ImportError(
+                    "python-docx required for DOCX files: pip install python-docx"
+                ) from e
 
         elif suffix in (".html", ".htm"):
             try:
@@ -275,10 +276,10 @@ class IngestEngine:
                 html = file_path.read_text(encoding="utf-8")
                 soup = BeautifulSoup(html, "html.parser")
                 return soup.get_text(separator="\n"), "html"
-            except ImportError:
+            except ImportError as e:
                 raise ImportError(
                     "beautifulsoup4 required for HTML files: pip install beautifulsoup4"
-                )
+                ) from e
 
         elif suffix == ".md":
             return file_path.read_text(encoding="utf-8"), "markdown"
@@ -293,13 +294,13 @@ class IngestEngine:
             # Try to read as text
             try:
                 return file_path.read_text(encoding="utf-8"), "txt"
-            except UnicodeDecodeError:
-                raise ValueError(f"Cannot extract text from {suffix} files")
+            except UnicodeDecodeError as e:
+                raise ValueError(f"Cannot extract text from {suffix} files") from e
 
     async def add_document(
         self,
-        path: Union[str, Path],
-        metadata: Optional[dict] = None,
+        path: str | Path,
+        metadata: dict | None = None,
     ) -> IngestResult:
         """Add document from file path.
 
@@ -339,8 +340,8 @@ class IngestEngine:
         content: str,
         source: str,
         doc_type: str = "txt",
-        metadata: Optional[dict] = None,
-        file_path: Optional[str] = None,
+        metadata: dict | None = None,
+        file_path: str | None = None,
     ) -> IngestResult:
         """Add text content directly.
 
@@ -432,8 +433,8 @@ class IngestEngine:
 
     async def add_documents(
         self,
-        paths: list[Union[str, Path]],
-        metadata: Optional[dict] = None,
+        paths: list[str | Path],
+        metadata: dict | None = None,
     ) -> list[IngestResult]:
         """Add multiple documents.
 

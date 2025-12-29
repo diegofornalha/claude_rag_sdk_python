@@ -5,7 +5,7 @@
 # =============================================================================
 
 from dataclasses import dataclass
-from typing import List, Protocol
+from typing import Protocol
 
 from core.config import get_config
 
@@ -64,7 +64,7 @@ class AdaptiveTopK:
 
     def calculate_optimal_k(
         self,
-        results: List[SearchResultProtocol],
+        results: list[SearchResultProtocol],
         base_top_k: int,
     ) -> AdaptiveDecision:
         """
@@ -123,7 +123,7 @@ class AdaptiveTopK:
 
     def should_fetch_more(
         self,
-        results: List[SearchResultProtocol],
+        results: list[SearchResultProtocol],
         threshold: float = 0.5,
     ) -> bool:
         """

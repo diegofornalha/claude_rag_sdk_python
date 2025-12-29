@@ -30,7 +30,7 @@ def _get_session_id() -> str:
     if session_file.exists():
         try:
             return session_file.read_text().strip()
-        except (OSError, IOError):
+        except OSError:
             pass  # File read failed, use default
 
     return "default"

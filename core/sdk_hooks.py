@@ -9,7 +9,6 @@
 # =============================================================================
 
 import json
-import os
 import re
 import sqlite3
 import threading
@@ -19,7 +18,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 # =============================================================================
 # 1. DATA MODELS - Estruturas de dados para auditoria
@@ -63,7 +62,7 @@ class AuditRecord:
     tool_name: str = ""
     tool_parameters: dict = field(default_factory=dict)
     result: dict = field(default_factory=dict)
-    blocked_reason: Optional[str] = None
+    blocked_reason: str | None = None
     documents_accessed: int = 0
     documents_filtered: int = 0
     duration_ms: float = 0.0
@@ -96,7 +95,7 @@ class UserContext:
 class AuditDatabase:
     """Gerencia persistência de eventos de auditoria em SQLite."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         if db_path is None:
             db_path = Path.cwd() / ".agentfs" / "audit.db"
         self.db_path = db_path
@@ -166,10 +165,10 @@ class AuditDatabase:
 
     def query_events(
         self,
-        user_id: Optional[str] = None,
-        session_id: Optional[str] = None,
-        event_type: Optional[AuditEventType] = None,
-        tool_name: Optional[str] = None,
+        user_id: str | None = None,
+        session_id: str | None = None,
+        event_type: AuditEventType | None = None,
+        tool_name: str | None = None,
         limit: int = 100,
     ) -> list[dict]:
         """Consultar eventos de auditoria."""
@@ -200,7 +199,7 @@ class AuditDatabase:
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
 
-    def get_stats(self, session_id: Optional[str] = None) -> dict:
+    def get_stats(self, session_id: str | None = None) -> dict:
         """Obter estatísticas de auditoria."""
         base_query = "SELECT COUNT(*) as count, event_type FROM audit_events"
         params = []
@@ -371,7 +370,7 @@ class PathValidator:
         r"/tmp/(?!artifacts)",  # /tmp exceto /tmp/artifacts
     ]
 
-    def __init__(self, base_path: Optional[Path] = None):
+    def __init__(self, base_path: Path | None = None):
         """Inicializa o validador.
 
         Args:
@@ -382,7 +381,7 @@ class PathValidator:
             re.compile(p, re.IGNORECASE) for p in self.DANGEROUS_BASH_PATTERNS
         ]
 
-    def is_safe_path(self, file_path: str, session_id: Optional[str] = None) -> tuple[bool, str]:
+    def is_safe_path(self, file_path: str, session_id: str | None = None) -> tuple[bool, str]:
         """Verifica se um caminho é seguro para escrita.
 
         Args:
@@ -470,10 +469,10 @@ class HooksManager:
 
     def __init__(
         self,
-        rbac: Optional[RBACManager] = None,
-        rate_limiter: Optional[RateLimitManager] = None,
-        audit_db: Optional[AuditDatabase] = None,
-        path_validator: Optional[PathValidator] = None,
+        rbac: RBACManager | None = None,
+        rate_limiter: RateLimitManager | None = None,
+        audit_db: AuditDatabase | None = None,
+        path_validator: PathValidator | None = None,
         enable_rbac: bool = False,  # Desativado por padrão (sem autenticação)
         enable_rate_limit: bool = True,
         enable_path_validation: bool = True,  # Validação de path habilitada por padrão
@@ -492,7 +491,7 @@ class HooksManager:
         self._tool_start_times: dict[str, float] = {}
 
         # Session ID atual (atualizado pelo chat router)
-        self._current_session_id: Optional[str] = None
+        self._current_session_id: str | None = None
 
         # Contexto de usuário padrão (quando RBAC desativado)
         self._default_user = UserContext(
@@ -508,7 +507,7 @@ class HooksManager:
     async def pre_tool_use(
         self,
         input_data: dict[str, Any],
-        tool_use_id: Optional[str],
+        tool_use_id: str | None,
         context: Any,
     ) -> dict[str, Any]:
         """
@@ -697,7 +696,7 @@ class HooksManager:
     async def post_tool_use(
         self,
         input_data: dict[str, Any],
-        tool_use_id: Optional[str],
+        tool_use_id: str | None,
         context: Any,
     ) -> dict[str, Any]:
         """
@@ -849,7 +848,7 @@ class HooksManager:
 # =============================================================================
 
 # Instância global do HooksManager
-_hooks_manager: Optional[HooksManager] = None
+_hooks_manager: HooksManager | None = None
 
 
 def get_hooks_manager() -> HooksManager:
@@ -881,7 +880,7 @@ def set_current_session_id(session_id: str) -> None:
 
 async def standalone_pre_tool_use(
     input_data: dict[str, Any],
-    tool_use_id: Optional[str],
+    tool_use_id: str | None,
     context: Any,
 ) -> dict[str, Any]:
     """Standalone wrapper for pre_tool_use hook."""
@@ -892,7 +891,7 @@ async def standalone_pre_tool_use(
 
 async def standalone_post_tool_use(
     input_data: dict[str, Any],
-    tool_use_id: Optional[str],
+    tool_use_id: str | None,
     context: Any,
 ) -> dict[str, Any]:
     """Standalone wrapper for post_tool_use hook."""
@@ -909,7 +908,7 @@ class HookMatcherObject:
     not dict access (matcher["hooks"]), so we need an object.
     """
 
-    def __init__(self, hooks: list, matcher: Optional[str] = None, timeout: Optional[float] = None):
+    def __init__(self, hooks: list, matcher: str | None = None, timeout: float | None = None):
         self.hooks = hooks
         self.matcher = matcher
         self.timeout = timeout
@@ -958,8 +957,8 @@ class AuditLogger:
         tool_name: str,
         inputs: Any = None,
         outputs: Any = None,
-        duration_ms: Optional[float] = None,
-        metadata: Optional[dict] = None,
+        duration_ms: float | None = None,
+        metadata: dict | None = None,
     ):
         """Log de chamada de tool."""
         record = AuditRecord(
@@ -977,7 +976,7 @@ class AuditLogger:
         tool_name: str,
         reason: str,
         inputs: Any = None,
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ):
         """Log de tentativa bloqueada."""
         record = AuditRecord(
@@ -995,7 +994,7 @@ class AuditLogger:
         error_type: str,
         error_message: str,
         tool_name: str = "",
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ):
         """Log de erro."""
         record = AuditRecord(
@@ -1009,7 +1008,7 @@ class AuditLogger:
 
 
 # Instância global do AuditLogger (compatibilidade)
-_audit_logger: Optional[AuditLogger] = None
+_audit_logger: AuditLogger | None = None
 
 
 def get_audit_logger() -> AuditLogger:

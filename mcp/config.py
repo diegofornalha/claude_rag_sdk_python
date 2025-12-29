@@ -10,7 +10,7 @@ import json
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -18,10 +18,10 @@ class MCPAdapterConfig:
     """Configuração de um adapter MCP específico"""
 
     enabled: bool = True
-    command: List[str] = field(default_factory=list)
+    command: list[str] = field(default_factory=list)
     timeout_seconds: float = 30.0
     retry_attempts: int = 3
-    options: Dict[str, Any] = field(default_factory=dict)
+    options: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -29,7 +29,7 @@ class MCPConfig:
     """Configuração global do sistema MCP"""
 
     # Adapters registrados e suas configurações
-    adapters: Dict[str, MCPAdapterConfig] = field(default_factory=dict)
+    adapters: dict[str, MCPAdapterConfig] = field(default_factory=dict)
 
     # Configurações globais
     default_timeout: float = 30.0
@@ -150,7 +150,7 @@ class MCPConfig:
         adapter = self.adapters.get(name)
         return adapter is not None and adapter.enabled
 
-    def get_enabled_adapters(self) -> List[str]:
+    def get_enabled_adapters(self) -> list[str]:
         """Retorna lista de adapters habilitados."""
         return [name for name, config in self.adapters.items() if config.enabled]
 
@@ -170,7 +170,7 @@ class MCPConfig:
 
 
 # Configuração global singleton (carregada uma vez)
-_global_config: Optional[MCPConfig] = None
+_global_config: MCPConfig | None = None
 
 
 def get_mcp_config() -> MCPConfig:

@@ -8,7 +8,6 @@ import threading
 import time
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -27,7 +26,7 @@ class RateLimitResult:
     allowed: bool
     remaining: int
     reset_at: float  # Unix timestamp
-    retry_after: Optional[int] = None  # Segundos até poder tentar novamente
+    retry_after: int | None = None  # Segundos até poder tentar novamente
 
     def to_headers(self) -> dict[str, str]:
         """Retorna headers de rate limit."""
@@ -47,7 +46,7 @@ class SlidingWindowRateLimiter:
     Mais preciso que fixed window, evita bursts no limite da janela.
     """
 
-    def __init__(self, config: Optional[RateLimitConfig] = None):
+    def __init__(self, config: RateLimitConfig | None = None):
         self.config = config or RateLimitConfig()
         self._requests: dict[str, list[float]] = defaultdict(list)
         self._lock = threading.RLock()
@@ -213,7 +212,7 @@ class TokenBucketRateLimiter:
 
 
 # Instância global
-_rate_limiter: Optional[SlidingWindowRateLimiter] = None
+_rate_limiter: SlidingWindowRateLimiter | None = None
 
 
 def get_rate_limiter() -> SlidingWindowRateLimiter:

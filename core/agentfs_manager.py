@@ -8,7 +8,6 @@ Gerencia lifecycle do AgentFS, garantindo uma instância por sessão
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 # Adicionar caminho do SDK do AgentFS
 agentfs_sdk_path = Path(__file__).parent.parent / "agentfs" / "sdk" / "python"
@@ -19,8 +18,8 @@ from agentfs_sdk import AgentFS, AgentFSOptions  # noqa: E402
 from .logger import logger  # noqa: E402
 
 # Instância global
-_agentfs: Optional[AgentFS] = None
-_current_session_id: Optional[str] = None
+_agentfs: AgentFS | None = None
+_current_session_id: str | None = None
 
 
 async def init_agentfs(session_id: str) -> AgentFS:
@@ -74,7 +73,7 @@ async def init_agentfs(session_id: str) -> AgentFS:
 
     except Exception as e:
         logger.error(f"Erro ao inicializar AgentFS: {e}", session_id=session_id, error=str(e))
-        raise RuntimeError(f"Falha ao inicializar AgentFS: {e}")
+        raise RuntimeError(f"Falha ao inicializar AgentFS: {e}") from e
 
 
 def get_agentfs() -> AgentFS:
@@ -119,7 +118,7 @@ def is_initialized() -> bool:
     return _agentfs is not None
 
 
-def get_current_session_id() -> Optional[str]:
+def get_current_session_id() -> str | None:
     """Retorna o session_id atual (se houver)."""
     return _current_session_id
 

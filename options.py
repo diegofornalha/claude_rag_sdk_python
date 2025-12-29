@@ -4,7 +4,6 @@ import os
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class EmbeddingModel(Enum):
@@ -72,11 +71,11 @@ class ClaudeRAGOptions:
     """
 
     # Identity
-    id: Optional[str] = None
-    path: Optional[str] = None
+    id: str | None = None
+    path: str | None = None
 
     # RAG Database
-    db_path: Optional[str] = None
+    db_path: str | None = None
 
     # Embedding
     embedding_model: EmbeddingModel = EmbeddingModel.BGE_SMALL
@@ -88,7 +87,7 @@ class ClaudeRAGOptions:
 
     # Agent
     agent_model: AgentModel = AgentModel.HAIKU
-    system_prompt: Optional[str] = None
+    system_prompt: str | None = None
 
     # Cache
     cache_ttl: int = 3600  # 1 hour

@@ -1,9 +1,10 @@
 """Agent engine for ClaudeRAG SDK - Claude-powered Q&A with RAG."""
 
 import asyncio
+from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, AsyncIterator, Optional
+from typing import Any
 
 from .options import AgentModel, ClaudeRAGOptions
 
@@ -46,8 +47,8 @@ class StreamChunk:
         done: Whether streaming is complete
     """
 
-    text: Optional[str] = None
-    tool_use: Optional[dict] = None
+    text: str | None = None
+    tool_use: dict | None = None
     done: bool = False
 
 
@@ -96,7 +97,7 @@ Sempre use search_documents antes de responder qualquer pergunta."""
     def __init__(
         self,
         options: ClaudeRAGOptions,
-        mcp_server_path: Optional[str] = None,
+        mcp_server_path: str | None = None,
     ):
         """Initialize agent engine.
 
@@ -118,10 +119,10 @@ Sempre use search_documents antes de responder qualquer pergunta."""
 
         try:
             from claude_agent_sdk import ClaudeAgentOptions
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "claude-agent-sdk required for agent queries: pip install claude-agent-sdk"
-            )
+            ) from e
 
         # MCP server config
         mcp_servers = {}
@@ -181,7 +182,7 @@ Sempre use search_documents antes de responder qualquer pergunta."""
             traceback.print_exc()
             raise ImportError(
                 f"claude-agent-sdk required for agent queries: pip install claude-agent-sdk (original error: {e})"
-            )
+            ) from e
 
         options = self._get_agent_options()
         response_text = ""
@@ -226,10 +227,10 @@ Sempre use search_documents antes de responder qualquer pergunta."""
         try:
             from claude_agent_sdk import AssistantMessage, TextBlock, ToolUseBlock
             from claude_agent_sdk import query as sdk_query
-        except ImportError:
+        except ImportError as e:
             raise ImportError(
                 "claude-agent-sdk required for agent queries: pip install claude-agent-sdk"
-            )
+            ) from e
 
         options = self._get_agent_options()
 
@@ -336,7 +337,7 @@ class SimpleAgent:
         self,
         search_engine: Any,  # SearchEngine
         model: AgentModel = AgentModel.HAIKU,
-        system_prompt: Optional[str] = None,
+        system_prompt: str | None = None,
     ):
         """Initialize simple agent.
 
@@ -361,8 +362,8 @@ class SimpleAgent:
         """
         try:
             import anthropic
-        except ImportError:
-            raise ImportError("anthropic required for SimpleAgent: pip install anthropic")
+        except ImportError as e:
+            raise ImportError("anthropic required for SimpleAgent: pip install anthropic") from e
 
         # Retrieve relevant documents
         results = await self.search_engine.search(question, top_k=top_k)

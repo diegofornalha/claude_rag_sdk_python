@@ -11,7 +11,6 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from fastapi import Header
 
@@ -35,10 +34,10 @@ class APIKey:
     scopes: list[AuthScope]  # Permissões
     owner: str  # Dono da chave
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    expires_at: Optional[datetime] = None
-    last_used_at: Optional[datetime] = None
+    expires_at: datetime | None = None
+    last_used_at: datetime | None = None
     is_active: bool = True
-    rate_limit_override: Optional[int] = None  # Override do rate limit
+    rate_limit_override: int | None = None  # Override do rate limit
 
     def is_valid(self) -> bool:
         """Verifica se a chave é válida."""
@@ -71,9 +70,9 @@ class AuthResult:
     """Resultado da autenticação."""
 
     authenticated: bool
-    api_key: Optional[APIKey] = None
-    error: Optional[str] = None
-    user_id: Optional[str] = None
+    api_key: APIKey | None = None
+    error: str | None = None
+    user_id: str | None = None
 
 
 class APIKeyManager:
@@ -107,7 +106,7 @@ class APIKeyManager:
         name: str,
         owner: str,
         scopes: list[AuthScope],
-        expires_in_days: Optional[int] = None,
+        expires_in_days: int | None = None,
     ) -> tuple[str, APIKey]:
         """
         Cria nova API key.
@@ -194,11 +193,11 @@ class APIKeyManager:
             return True
         return False
 
-    def get_key(self, key_id: str) -> Optional[APIKey]:
+    def get_key(self, key_id: str) -> APIKey | None:
         """Retorna API key por ID."""
         return self._keys.get(key_id)
 
-    def list_keys(self, owner: Optional[str] = None) -> list[APIKey]:
+    def list_keys(self, owner: str | None = None) -> list[APIKey]:
         """Lista API keys, opcionalmente filtradas por owner."""
         keys = list(self._keys.values())
         if owner:
@@ -206,7 +205,7 @@ class APIKeyManager:
         return keys
 
 
-def extract_api_key(auth_header: Optional[str]) -> Optional[str]:
+def extract_api_key(auth_header: str | None) -> str | None:
     """
     Extrai API key do header Authorization.
 
@@ -231,7 +230,7 @@ def extract_api_key(auth_header: Optional[str]) -> Optional[str]:
 
 
 # Instância global
-_key_manager: Optional[APIKeyManager] = None
+_key_manager: APIKeyManager | None = None
 
 
 def get_key_manager() -> APIKeyManager:
@@ -242,7 +241,7 @@ def get_key_manager() -> APIKeyManager:
     return _key_manager
 
 
-def authenticate(auth_header: Optional[str]) -> AuthResult:
+def authenticate(auth_header: str | None) -> AuthResult:
     """Autentica usando header Authorization."""
     key = extract_api_key(auth_header)
     return (
@@ -265,7 +264,7 @@ try:
     _DOTENV_AVAILABLE = True
 except ImportError:
     _DOTENV_AVAILABLE = False
-    _env_path: Optional[Path] = None
+    _env_path: Path | None = None
 
 # Chaves válidas
 VALID_API_KEYS: set[str] = set()

@@ -11,7 +11,7 @@ import logging
 import subprocess
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .base import MCPAdapterStatus, MCPToolResult
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MCPClientConfig:
     """Configuração do cliente MCP"""
 
-    command: List[str]
+    command: list[str]
     timeout_seconds: float = 30.0
     retry_attempts: int = 3
     retry_delay_seconds: float = 1.0
@@ -38,10 +38,10 @@ class MCPClient:
 
     def __init__(self, config: MCPClientConfig):
         self.config = config
-        self._process: Optional[subprocess.Popen] = None
+        self._process: subprocess.Popen | None = None
         self._request_id = 0
         self._status = MCPAdapterStatus.DISCONNECTED
-        self._available_tools: List[str] = []
+        self._available_tools: list[str] = []
         self._lock = asyncio.Lock()
 
     @property
@@ -49,7 +49,7 @@ class MCPClient:
         return self._status
 
     @property
-    def available_tools(self) -> List[str]:
+    def available_tools(self) -> list[str]:
         return self._available_tools.copy()
 
     async def connect(self) -> bool:
@@ -133,7 +133,7 @@ class MCPClient:
             return False
         return True
 
-    async def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> MCPToolResult:
+    async def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> MCPToolResult:
         """
         Chama uma tool do MCP server.
 
@@ -235,7 +235,7 @@ class MCPClient:
         except Exception as e:
             logger.error(f"Failed to fetch tools: {e}")
 
-    async def _send_request(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    async def _send_request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         """Envia uma requisição JSON-RPC e aguarda resposta."""
         if not self._process or not self._process.stdin or not self._process.stdout:
             raise RuntimeError("MCP process not running")
@@ -265,9 +265,7 @@ class MCPClient:
 
         return json.loads(response_line)
 
-    async def _send_notification(
-        self, method: str, params: Optional[Dict[str, Any]] = None
-    ) -> None:
+    async def _send_notification(self, method: str, params: dict[str, Any] | None = None) -> None:
         """Envia uma notificação (sem esperar resposta)."""
         if not self._process or not self._process.stdin:
             return
@@ -283,7 +281,7 @@ class MCPClient:
         self._process.stdin.write(notification_str)
         self._process.stdin.flush()
 
-    def _extract_content(self, content: List[Dict]) -> Any:
+    def _extract_content(self, content: list[dict]) -> Any:
         """Extrai dados úteis do conteúdo da resposta MCP."""
         if not content:
             return None

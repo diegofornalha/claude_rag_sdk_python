@@ -10,7 +10,6 @@ import threading
 from contextlib import contextmanager
 from pathlib import Path
 from queue import Empty, Queue
-from typing import Optional, Union
 
 import apsw
 import sqlite_vec
@@ -29,7 +28,7 @@ class ConnectionPool:
 
     def __init__(
         self,
-        db_path: Optional[Union[str, Path]] = None,
+        db_path: str | Path | None = None,
         pool_size: int = 5,
         use_apsw: bool = True,
         load_vec_extension: bool = True,
@@ -55,7 +54,7 @@ class ConnectionPool:
         # Garantir que o diretório existe
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
 
-    def _create_connection(self) -> Union[apsw.Connection, sqlite3.Connection]:
+    def _create_connection(self) -> apsw.Connection | sqlite3.Connection:
         """Cria uma nova conexão com as configurações apropriadas."""
         if self.use_apsw:
             conn = apsw.Connection(self.db_path)
@@ -69,7 +68,7 @@ class ConnectionPool:
 
         return conn
 
-    def get_connection(self) -> Union[apsw.Connection, sqlite3.Connection]:
+    def get_connection(self) -> apsw.Connection | sqlite3.Connection:
         """Obtém uma conexão do pool ou cria uma nova se necessário."""
         try:
             conn = self._pool.get_nowait()
@@ -95,7 +94,7 @@ class ConnectionPool:
         # Pool cheio, esperar por conexão
         return self._pool.get(timeout=30)
 
-    def return_connection(self, conn: Union[apsw.Connection, sqlite3.Connection]) -> None:
+    def return_connection(self, conn: apsw.Connection | sqlite3.Connection) -> None:
         """Retorna uma conexão ao pool."""
         try:
             self._pool.put_nowait(conn)
@@ -138,8 +137,8 @@ class ConnectionPool:
 
 
 # Instâncias globais (singleton pattern)
-_rag_pool: Optional[ConnectionPool] = None
-_audit_pool: Optional[ConnectionPool] = None
+_rag_pool: ConnectionPool | None = None
+_audit_pool: ConnectionPool | None = None
 
 
 def get_rag_pool() -> ConnectionPool:

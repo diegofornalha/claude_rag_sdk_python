@@ -8,7 +8,6 @@
 import os
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 from claude_rag_sdk.core.logger import get_logger
 
@@ -66,7 +65,7 @@ class GuestCheckResult:
     action: GuestLimitAction
     prompt_count: int
     prompts_remaining: int
-    message: Optional[str] = None
+    message: str | None = None
     can_continue: bool = True
 
     def to_dict(self) -> dict:
@@ -102,7 +101,7 @@ class GuestLimitManager:
         ENVIRONMENT=development    # Dev mode
     """
 
-    def __init__(self, config: Optional[GuestLimitConfig] = None):
+    def __init__(self, config: GuestLimitConfig | None = None):
         self.config = config or GuestLimitConfig.from_env()
         self._environment = os.getenv("ENVIRONMENT", "development")
 
@@ -142,7 +141,7 @@ class GuestLimitManager:
         await agentfs.kv.set("session:prompt_count", new_count)
         return new_count
 
-    async def get_user_id(self, agentfs) -> Optional[str]:
+    async def get_user_id(self, agentfs) -> str | None:
         """Obtém user_id da sessão (None = guest)."""
         try:
             return await agentfs.kv.get("session:user_id")
@@ -287,7 +286,7 @@ class GuestLimitManager:
 # GLOBAL INSTANCE
 # =============================================================================
 
-_guest_limit_manager: Optional[GuestLimitManager] = None
+_guest_limit_manager: GuestLimitManager | None = None
 
 
 def get_guest_limit_manager() -> GuestLimitManager:
@@ -298,7 +297,7 @@ def get_guest_limit_manager() -> GuestLimitManager:
     return _guest_limit_manager
 
 
-def reset_guest_limit_manager(config: Optional[GuestLimitConfig] = None) -> GuestLimitManager:
+def reset_guest_limit_manager(config: GuestLimitConfig | None = None) -> GuestLimitManager:
     """Reseta o manager com nova configuração (útil para testes)."""
     global _guest_limit_manager
     _guest_limit_manager = GuestLimitManager(config)

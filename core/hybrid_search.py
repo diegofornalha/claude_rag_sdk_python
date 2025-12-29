@@ -10,7 +10,6 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import apsw
 import sqlite_vec
@@ -108,7 +107,7 @@ class BM25:
         self.avg_doc_length = total_length / self.num_docs if self.num_docs > 0 else 0
         self._indexed = True
 
-    def search(self, query: str, doc_ids: Optional[list[int]] = None) -> dict[int, float]:
+    def search(self, query: str, doc_ids: list[int] | None = None) -> dict[int, float]:
         """
         Busca BM25.
 

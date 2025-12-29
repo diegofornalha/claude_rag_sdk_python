@@ -4,7 +4,7 @@
 # Exceções específicas do domínio para tratamento de erros preciso
 # =============================================================================
 
-from typing import Any, Optional
+from typing import Any
 
 
 class RAGException(Exception):
@@ -22,9 +22,9 @@ class RAGException(Exception):
 
     def __init__(
         self,
-        message: Optional[str] = None,
-        code: Optional[str] = None,
-        details: Optional[dict[str, Any]] = None,
+        message: str | None = None,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
     ):
         self.message = message or self.default_message
         self.code = code or self.__class__.__name__
@@ -345,7 +345,7 @@ class MCPToolError(MCPError):
 # =============================================================================
 
 
-def raise_for_status(response_code: int, message: Optional[str] = None) -> None:
+def raise_for_status(response_code: int, message: str | None = None) -> None:
     """Lança exceção apropriada baseada no código HTTP.
 
     Args:

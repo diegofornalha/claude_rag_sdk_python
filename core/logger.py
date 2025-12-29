@@ -10,7 +10,7 @@ import sys
 import uuid
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 # Context var para rastrear conversation_id entre chamadas
 conversation_id_var: ContextVar[str] = ContextVar("conversation_id", default="")
@@ -141,7 +141,7 @@ class RAGLogger:
         input_tokens: int,
         output_tokens: int,
         latency_ms: float,
-        cost_usd: Optional[float] = None,
+        cost_usd: float | None = None,
         **extra: Any,
     ) -> None:
         """Log de chamada ao LLM."""
@@ -195,7 +195,7 @@ class RAGLogger:
 
 
 # Funções de contexto
-def set_conversation_id(conversation_id: Optional[str] = None) -> str:
+def set_conversation_id(conversation_id: str | None = None) -> str:
     """Define conversation_id para o contexto atual."""
     cid = conversation_id or str(uuid.uuid4())
     conversation_id_var.set(cid)
@@ -207,7 +207,7 @@ def get_conversation_id() -> str:
     return conversation_id_var.get()
 
 
-def set_request_id(request_id: Optional[str] = None) -> str:
+def set_request_id(request_id: str | None = None) -> str:
     """Define request_id para o contexto atual."""
     rid = request_id or str(uuid.uuid4())
     request_id_var.set(rid)
@@ -219,7 +219,7 @@ def get_request_id() -> str:
     return request_id_var.get()
 
 
-def set_session_id(session_id: Optional[str] = None) -> str:
+def set_session_id(session_id: str | None = None) -> str:
     """Define session_id para o contexto atual."""
     sid = session_id or "default"
     session_id_var.set(sid)

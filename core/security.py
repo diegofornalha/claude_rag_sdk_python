@@ -7,7 +7,6 @@
 import os
 import re
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -29,7 +28,7 @@ class CORSConfig:
 class CORSMiddleware:
     """Middleware de CORS restritivo."""
 
-    def __init__(self, config: Optional[CORSConfig] = None):
+    def __init__(self, config: CORSConfig | None = None):
         self.config = config or CORSConfig()
         self._origin_patterns = self._compile_patterns()
 
