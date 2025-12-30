@@ -161,7 +161,7 @@ class SearchEngine:
         top_k: int = 5,
         use_reranking: bool | None = None,
         use_adaptive: bool | None = None,
-        content_max_length: int = 1000,
+        content_max_length: int = 3000,
     ) -> list[SearchResult]:
         """Perform semantic search.
 
@@ -272,7 +272,7 @@ class SearchEngine:
         query: str,
         top_k: int = 5,
         vector_weight: float = 0.7,
-        content_max_length: int = 1000,
+        content_max_length: int = 3000,
     ) -> list[HybridSearchResult]:
         """Perform hybrid search (semantic + BM25).
 
